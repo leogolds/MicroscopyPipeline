@@ -128,8 +128,8 @@ def build_viz(dmap):
 
 
 pn.Column(
-    pn.WidgetBox(frame_wdgt, channel_wdgt),
     pn.Row(
+        pn.WidgetBox(frame_wdgt, channel_wdgt),
         # pn.Column("Original", hv.DynamicMap(original)),
         pn.Column("Probabilities", build_viz(bounded_dmap_probabilities)),
         pn.Column("Original", build_viz(bounded_dmap_original)),
