@@ -1,0 +1,4 @@
+./run_ilastik.sh --headless \
+                 --project=/mnt/c/Data/Code/MicroscopyPipeline/MyProject_C2.ilp \
+				 --export_source="Probabilities" \
+				 /mnt/c/Data/Code/MicroscopyPipeline/C2-contrast_enhanced_short.tif

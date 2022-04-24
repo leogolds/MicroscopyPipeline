@@ -127,3 +127,14 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+.vscode/
+
+# Images
+*.h5
+*.tif
+*.tiff
+
+# Archives
+*.7z
+*.zip
