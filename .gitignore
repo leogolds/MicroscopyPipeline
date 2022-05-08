@@ -141,3 +141,9 @@ dmypy.json
 # Archives
 *.7z
 *.zip
+
+# Apps
+*.ilp
+*.cppipe
+*.cpproj
+*.doc*
