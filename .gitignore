@@ -135,6 +135,9 @@ dmypy.json
 *.tif
 *.tiff
 
+# Data
+*.csv
+
 # Archives
 *.7z
 *.zip

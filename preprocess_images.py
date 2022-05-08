@@ -5,20 +5,17 @@ from aicsimageio.transforms import reshape_data
 import numpy as np
 import skimage
 from sklearn import preprocessing
+import h5py
+from tqdm import tqdm
 
-
-path = Path(r"C:\Users\Leo\Downloads\raw_data position 001_021.tif")
+path = Path(r"C:\Data\Code\MicroscopyPipeline\3pos")
 assert path.exists()
 
-stack = AICSImage(path)
-frames, channels, _, _, _ = stack.shape
-
-phase_img = stack.get_image_dask_data("XYTC", Z=0).compute()
+tif_paths = list(path.rglob("*.tif"))
 
 
-# @pn.depends(i=frame_wdgt.param.value_throttled, c=channel_wdgt)
-def adaptive_equalize(c):
-    img = phase_img[:, :, :, c]
+def adaptive_equalize(img_stack, c):
+    img = img_stack[:, :, :, c]
 
     # Adaptive Equalization
     img_adapteq = [
@@ -31,12 +28,23 @@ def adaptive_equalize(c):
     return np.stack(img_adapteq, 2)
 
 
-stack = [adaptive_equalize(c) for c in range(channels)]
-contrast_enhanced_img = np.stack(stack, 3)
-reshaped = reshape_data(contrast_enhanced_img, "XYTC", "TCZYX")
+for path in tqdm(tif_paths):
+    stack = AICSImage(path)
+    frames, channels, _, _, _ = stack.shape
 
-OmeTiffWriter.save(
-    reshaped,
-    "contrast_enhanced.tiff",
-    dim_order="TCZYX",
-)
+    image_stack = stack.get_image_dask_data("XYTC", Z=0).compute()
+
+    # stack = [adaptive_equalize(image_stack, c) for c in range(channels)]
+    # contrast_enhanced_img = np.stack(stack, 3)
+    contrast_enhanced_img = adaptive_equalize(image_stack, 0)
+    # reshaped = reshape_data(contrast_enhanced_img, "XYTC", "TZXYC")
+    reshaped = reshape_data(contrast_enhanced_img, "XYT", "TZYXC")
+
+    new_file_path = path.parent / f"{path.stem}_enhanced.h5"
+    with h5py.File(new_file_path, "w") as f:
+        f.create_dataset("data", data=reshaped, dtype="uint8", chunks=True)
+    # OmeTiffWriter.save(
+    #     reshaped,
+    #     "contrast_enhanced.tiff",
+    #     dim_order="TCZYX",
+    # )
