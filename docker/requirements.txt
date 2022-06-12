@@ -1,5 +1,0 @@
-aicsimageio==4.7.0
-numpy==1.22.3
-scikit-image==0.19.2
-scikit-learn==1.0.2
-h5py==3.6.0
