@@ -4,7 +4,7 @@
 cellpose == 2.1.0
 
 # C:\Users\leo\PycharmProjects\MicroscopyPipeline\utils.py: 9
-docker == 5.0.3
+docker[tls]
 
 # C:\Users\leo\PycharmProjects\MicroscopyPipeline\ui.py: 8
 # C:\Users\leo\PycharmProjects\MicroscopyPipeline\utils.py: 5
@@ -19,7 +19,7 @@ hvplot == 0.8.0
 
 # C:\Users\leo\PycharmProjects\MicroscopyPipeline\ui.py: 5,6
 # C:\Users\leo\PycharmProjects\MicroscopyPipeline\utils.py: 2
-numpy == 1.23.0
+numpy == 1.22.0
 
 
 # C:\Users\leo\PycharmProjects\MicroscopyPipeline\ui.py: 14
