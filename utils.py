@@ -73,7 +73,7 @@ def calculate_kymograph(df):
     return df.agg({"area": ["mean", "std"], "perimeter": ["mean", "std"]})
 
 
-def read_stack(path):
+def read_stack(path) -> np.ndarray:
     f = h5py.File(path)
     return f.get("data", f.get("exported_data"))
 

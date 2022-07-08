@@ -1,0 +1,17 @@
+left_channel: C:\Data\Code\MicroscopyPipeline\3pos\pos35\C2_short.h5
+right_channel: C:\Data\Code\MicroscopyPipeline\3pos\pos35\C3_short.h5
+interactive: true
+steps:
+  Preprocessing:
+    clip_limit_left: 0.03
+    clip_limit_right: 0.03
+  ProbabilityMaps:
+    model_path_left: C:\Data\Code\MicroscopyPipeline\3pos\pos35\MyProject_pos35_red.ilp
+    model_path_right: C:\Data\Code\MicroscopyPipeline\3pos\pos35\MyProject_pos35_green.ilp
+  MergeChannels:
+    probability_threshold_left: 0.9
+    probability_threshold_right: 0.9
+  SegmentStack:
+    diameter_um: 25
+    use_gpu: false
+    model: cyto
