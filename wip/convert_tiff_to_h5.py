@@ -8,16 +8,17 @@ from sklearn import preprocessing
 import h5py
 from tqdm import tqdm
 
-path = Path(r"C:\Data\Code\MicroscopyPipeline\3pos\pos35")
+path = Path(r"D:\Data\ser1-1-20.tif")
 assert path.exists()
 
 tif_paths = list(path.rglob("*.tif"))
 
-for path in tqdm(tif_paths):
+# for path in tqdm(tif_paths):
+for path in tqdm([path]):
     stack = AICSImage(path)
-    frames, channels, _, _, _ = stack.shape
+    # frames, channels, _, _, _ = stack.shape
 
-    image_stack = stack.get_image_dask_data("TYX", Z=0, C=0).compute()
+    image_stack = stack.get_image_dask_data("TCYX", Z=0).compute()
 
     reshaped = reshape_data(image_stack, "TYX", "TZYXC")
 

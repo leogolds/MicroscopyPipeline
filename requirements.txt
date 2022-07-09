@@ -48,3 +48,6 @@ scikit-image[optional] ==  0.19.3
 
 # C:\Users\leo\PycharmProjects\MicroscopyPipeline\utils.py: 17
 tqdm == 4.64.0
+
+aicsimageio == 3.2.1
+scikit-learn == 1.1.1

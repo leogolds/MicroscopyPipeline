@@ -1,4 +1,6 @@
 from typing import Callable
+
+import aicsimageio.transforms
 import numpy as np
 
 from pathlib import Path
@@ -16,6 +18,9 @@ from shapely.geometry import Polygon
 import hvplot.pandas
 from tqdm import trange
 from holoviews.operation.datashader import regrid
+from aicsimageio import AICSImage
+import skimage
+from typing import Dict
 
 
 magnification_towards_camera = 1
@@ -160,6 +165,41 @@ def create_dmap_from_image(function: Callable):
     )
 
     return regridded << histogram
+
+
+def split_channels_and_convert_to_h5(path: Path) -> Dict[str, Path]:
+    """
+    This function is specifically targeted for the Lior Atia Lab and the format of XXXX camera
+    Args:
+        path: path to XXXXX tif stack
+
+    Returns:
+
+    """
+    output_path = path.parent / "MicroscopyPipeline" / path.stem
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    stack = AICSImage(path)
+    _, frames, channels, _, _, _ = stack.shape
+
+    channel_map = {0: "phase", 1: "red", 2: "green"}
+    output = {}
+
+    for channel, channel_name in channel_map.items():
+        image_stack = stack.get_image_dask_data("TYX", Z=0, C=channel).compute()
+
+        reshaped = aicsimageio.transforms.reshape_data(image_stack, "TYX", "TZYXC")
+
+        new_file_path = output_path / f"{channel_name}.h5"
+
+        with h5py.File(new_file_path, "w") as f:
+            f.create_dataset(
+                "data", data=skimage.img_as_ubyte(reshaped), dtype="uint8", chunks=True
+            )
+
+        output[channel_name] = new_file_path
+
+    return output
 
 
 docker_client = DockerClient()
