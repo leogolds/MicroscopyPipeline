@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 RUN mkdir ilastik; \
-    curl https://files.ilastik.org/ilastik-1.3.3post3-Linux.tar.bz2 | \
+    curl --retry 5 https://files.ilastik.org/ilastik-1.3.3post3-Linux.tar.bz2 | \
     tar xjf - --strip-components 1 -C ilastik
 
 # COPY requirements.txt ./

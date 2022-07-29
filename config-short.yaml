@@ -1,5 +1,5 @@
-left_channel: D:\Data\MicroscopyPipeline\ser1-1-20\red.h5
-right_channel: D:\Data\MicroscopyPipeline\ser1-1-20\green.h5
+left_channel: D:\Data\MicroscopyPipeline\ser1-1-20\red_short.h5
+right_channel: D:\Data\MicroscopyPipeline\ser1-1-20\green_short.h5
 #left_channel: D:\Data\MicroscopyPipeline\ser1\red.h5
 #right_channel: D:\Data\MicroscopyPipeline\ser1\green.h5
 interactive: true
@@ -8,8 +8,8 @@ steps:
     clip_limit_left: 0.03
     clip_limit_right: 0.03
   ProbabilityMaps:
-    model_path_left: D:\Data\ilastik_models\ser1-yael-red.ilp
-    model_path_right: D:\Data\ilastik_models\ser1-yael-green.ilp
+    model_path_left: D:\Data\ilastik_models\ser1_yael_red_contrast_no_dounuts.ilp
+    model_path_right: D:\Data\ilastik_models\ser1_yael_green_contrast_no_dounuts.ilp
   MergeChannels:
     probability_threshold_left: 0.7
     probability_threshold_right: 0.7

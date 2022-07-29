@@ -11,7 +11,7 @@ import param
 
 hv.extension("bokeh")
 
-path = Path(r"3pos/pos35/")
+path = Path(r"D:\Data\MicroscopyPipeline\ser1")
 assert path.exists()
 
 

@@ -4,7 +4,7 @@
 cellpose == 2.1.0
 
 # C:\Users\leo\PycharmProjects\MicroscopyPipeline\utils.py: 9
-docker[tls]
+docker[tls]~=5.0.3
 
 # C:\Users\leo\PycharmProjects\MicroscopyPipeline\ui.py: 8
 # C:\Users\leo\PycharmProjects\MicroscopyPipeline\utils.py: 5
@@ -48,3 +48,10 @@ scikit-image[optional] ==  0.19.3
 
 # C:\Users\leo\PycharmProjects\MicroscopyPipeline\utils.py: 17
 tqdm == 4.64.0
+
+aicsimageio == 3.2.1
+scikit-learn == 1.1.1
+#torch~=1.12.0
+typer~=0.5.0
+PyYAML~=6.0
+setuptools~=60.2.0
