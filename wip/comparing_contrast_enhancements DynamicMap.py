@@ -6,29 +6,35 @@ import skimage
 from sklearn import preprocessing
 import panel as pn
 from holoviews.operation.datashader import regrid, rasterize
-
+import tifffile
+import h5py
 
 hv.extension("bokeh")
 
 
-path = Path(r"C:\Users\Leo\Downloads\raw_data position 001_021.tif")
+path = Path(r"C:\Data\Code\MicroscopyPipeline\3pos\pos35\C2_short.h5")
 assert path.exists()
 
-stack = AICSImage(path)
+# stack = AICSImage(path)
+# frames, channels, _, _, _ = stack.shape
+stack = h5py.File(path).get("data")
+print(stack.shape)
+# exit(0)
 frames, channels, _, _, _ = stack.shape
+
 
 frame_wdgt = pn.widgets.IntSlider(
     name="Frame", start=0, end=frames - 1, step=1, value=0
 )
-channel_wdgt = pn.widgets.IntSlider(
-    name="Channel", start=0, end=channels - 1, step=1, value=0
-)
-phase_img = stack.get_image_dask_data("TYXC", Z=0).compute()
+channel_wdgt = pn.widgets.IntSlider(name="Channel", start=0, end=2, step=1, value=0)
+# phase_img = stack.get_image_dask_data("TYXC", Z=0).compute()
+phase_img = stack
 
 
 # @pn.depends(i=frame_wdgt.param.value_throttled, c=channel_wdgt)
 def rescale_intensity(i, c=0):
-    img = phase_img[i, :, :, c]
+    # img = phase_img[i, :, :, c]
+    img = phase_img[i, 0, :, :, 0]
     # Contrast stretching
     p2, p98 = np.percentile(img, (2, 98))
     img_rescale = skimage.exposure.rescale_intensity(img, in_range=(p2, p98))
@@ -47,7 +53,8 @@ def rescale_intensity(i, c=0):
 
 # @pn.depends(i=frame_wdgt.param.value_throttled, c=channel_wdgt)
 def equalize(i, c=0):
-    img = phase_img[i, :, :, c]
+    # img = phase_img[i, :, :, c]
+    img = phase_img[i, 0, :, :, 0]
 
     # Equalization
     img_eq = skimage.exposure.equalize_hist(img)
@@ -57,7 +64,8 @@ def equalize(i, c=0):
 
 # @pn.depends(i=frame_wdgt.param.value_throttled, c=channel_wdgt)
 def adaptive_equalize(i, c=0):
-    img = phase_img[i, :, :, c]
+    # img = phase_img[i, :, :, c]
+    img = phase_img[i, 0, :, :, 0]
 
     # Adaptive Equalization
     img_adapteq = skimage.exposure.equalize_adapthist(img, clip_limit=0.03)
@@ -66,8 +74,21 @@ def adaptive_equalize(i, c=0):
 
 
 # @pn.depends(i=frame_wdgt.param.value_throttled, c=channel_wdgt)
+def adaptive_equalize_unclipped(i, c=0):
+    # img = phase_img[i, :, :, c]
+    img = phase_img[i, 0, :, :, 0]
+
+    # Adaptive Equalization
+    img_adapteq = skimage.exposure.equalize_adapthist(img, clip_limit=-1)
+
+    return hv.plotting.Image(img_adapteq).opts(colorbar=False, cmap="gray")
+
+
+# @pn.depends(i=frame_wdgt.param.value_throttled, c=channel_wdgt)
 def original(i, c=0):
-    img = phase_img[i, :, :, c]
+    # img = phase_img[i, :, :, c]
+    img = phase_img[i, 0, :, :, 0]
+
     shape = img.shape
     img = preprocessing.minmax_scale(img.ravel()).reshape(shape)
 
@@ -112,6 +133,13 @@ bounded_dmap_adaptive_equalize = hv.DynamicMap(
         c=channel_wdgt.param.value_throttled,
     )
 )
+bounded_dmap_adaptive_equalize_unclipped = hv.DynamicMap(
+    pn.bind(
+        adaptive_equalize_unclipped,
+        i=frame_wdgt.param.value_throttled,
+        c=channel_wdgt.param.value_throttled,
+    )
+)
 
 
 def build_viz(dmap):
@@ -128,10 +156,14 @@ pn.Column(
         # pn.Column("Original", hv.DynamicMap(original)),
         pn.Column("Original", build_viz(bounded_dmap_original)),
         # # pn.Column("Rescaled Intensity", hv.DynamicMap(rescale_intensity)),
-        pn.Column("Rescaled Intensity", build_viz(bounded_dmap_rescale_intensity)),
+        # pn.Column("Rescaled Intensity", build_viz(bounded_dmap_rescale_intensity)),
         # # # pn.Column("Equalize", hv.DynamicMap(equalize)),
         pn.Column("Equalize", build_viz(bounded_dmap_equalize)),
         # # # pn.Column("Adaptive Equalize", hv.DynamicMap(adaptive_equalize)),
         pn.Column("Adaptive Equalize", build_viz(bounded_dmap_adaptive_equalize)),
+        pn.Column(
+            "Adaptive Equalize unclipped",
+            build_viz(bounded_dmap_adaptive_equalize_unclipped),
+        ),
     ),
 ).show()
