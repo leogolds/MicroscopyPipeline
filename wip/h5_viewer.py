@@ -14,7 +14,9 @@ hv.extension("bokeh")
 # path = Path(r"C2-contrast_enhanced_Probabilities.h5")
 # path = Path(r"3pos/pos35/C2_enhanced_Probabilities.h5")
 # path = Path(r"3pos/pos35/c3_segmented.h5")
-path = Path(r"3pos/pos35/merged_segmented.h5")
+# path = Path(r"3pos/pos35/merged_segmented.h5")
+path = Path(r"D:\Data\MicroscopyPipeline\ser1\phase.h5")
+
 # path = Path(r"3pos/pos35/merged_binary_map.h5")
 # path = Path(r"3pos/pos35/c2_segmented.h5")
 # path = Path(r"C:\Data\Code\MicroscopyPipeline\3pos\pos35\C2_enhanced_short-data_Object Predictions.h5")
@@ -22,9 +24,9 @@ assert path.exists()
 
 stack = h5py.File(path, "r")
 print(stack.keys())
-stack = stack.get("exported_data")
-# frames, _, _, _, channels = stack.shape
-frames, _, _ = stack.shape
+stack = stack.get("exported_data", stack.get("data"))
+frames, _, _, _, channels = stack.shape
+# frames, _, _ = stack.shape
 
 frame_wdgt = pn.widgets.IntSlider(
     name="Frame", start=0, end=frames - 1, step=1, value=0
@@ -35,8 +37,8 @@ frame_wdgt = pn.widgets.IntSlider(
 
 
 def original(frame, channel=0):
-    # img = stack[frame, 0, :, :, channel]
-    img = stack[frame, ...]
+    img = stack[frame, 0, :, :, channel]
+    # img = stack[frame, ...]
     shape = img.shape
     # img = preprocessing.minmax_scale(img.ravel()).reshape(shape)
 
