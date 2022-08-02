@@ -10,6 +10,7 @@ from cellpose import models
 from PIL import Image
 import holoviews as hv
 from docker.client import DockerClient
+from docker.types import Mount
 
 hv.extension("bokeh")
 from scipy import ndimage
@@ -243,6 +244,36 @@ def split_channels_and_convert_to_h5_tifffile(path: Path) -> Dict[str, Path]:
         output[channel_name] = new_file_path
 
     return output
+
+
+def run_trackmate(settings_path: Path, data_path: Path):
+    volumes = {
+        f"{settings_path.parent.absolute()}": {"bind": "/settings/", "mode": "ro"},
+        f"{data_path.parent.absolute()}": {"bind": "/data/", "mode": "rw"},
+    }
+    settings_mount = Mount(
+        target="/settings",
+        source=str(settings_path.parent.absolute()),
+        type="bind",
+        read_only=True,
+    )
+    data_mount = Mount(
+        target="/data",
+        source=str(data_path.parent.absolute()),
+        type="bind",
+        read_only=False,
+    )
+
+    container = docker_client.containers.run(
+        image="trackmate",
+        detach=True,
+        # volumes=volumes,
+        mounts=[settings_mount, data_mount],
+        environment={"SETTINGS_XML": settings_path.name, "TIFF_STACK": data_path.name},
+    )
+
+    for line in container.logs(stream=True):
+        print(line.decode("utf-8"))
 
 
 docker_client = DockerClient()

@@ -1,6 +1,6 @@
 FROM condaforge/mambaforge
 
-RUN mamba create -n pyimagej -c conda-forge pyimagej openjdk=8 jupyterlab unzip
+RUN mamba create -n pyimagej -c conda-forge pyimagej openjdk=8 unzip
 #RUN conda activate pyimagej
 # Make RUN commands use the new environment:
 SHELL ["conda", "run", "--no-capture-output", "-n", "pyimagej", "/bin/bash", "-c"]
@@ -20,14 +20,15 @@ ENV PATH $PATH:/opt/fiji/Fiji.app
 COPY init_fiji.py .
 RUN python /opt/fiji/init_fiji.py
 
-
-WORKDIR /notebooks
-
+WORKDIR /
+COPY read_settings_and_process_tiff_stack.py .
+COPY entrypoint.sh .
+#RUN mamba install jupyterlab
+#WORKDIR /notebooks
+#EXPOSE 8888
 
 #ENTRYPOINT [ "bash" ]
-
-EXPOSE 8888
-
-#ENTRYPOINT ["jupyter", "lab","--ip=0.0.0.0","--allow-root"]
-ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "pyimagej", "jupyter", "lab","--ip=0.0.0.0","--allow-root"]
-
+#ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "pyimagej", "jupyter", "lab","--ip=0.0.0.0","--allow-root"]
+#ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "pyimagej", "ImageJ-linux64", "--ij2", "--headless", "--run", "read_settings_and_process_tiff_stack.py"]
+#CMD conda run -n pyimagej ImageJ-linux64 --headless --jython read_settings_and_process_tiff_stack.py
+CMD /entrypoint.sh
