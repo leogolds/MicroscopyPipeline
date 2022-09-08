@@ -26,7 +26,7 @@ sys.setdefaultencoding("utf-8")
 data_path = "/data/" + os.environ.get("TIFF_STACK")
 print("reading data from: " + data_path)
 # imp = IJ.openImage("https://fiji.sc/samples/FakeTracks.tif")
-imp = IJ.openImage("/data/segmented.tiff")
+imp = IJ.openImage(data_path)
 print("data read successfully")
 
 # -----------------
@@ -75,12 +75,15 @@ model.getLogger().log(str(model))
 # --------
 # Write Results
 # --------
-f = File("/data/results.xml")
+print("writing results.xml")
+f = File("/data/" + os.environ.get("TIFF_STACK") + ".xml")
 xml_writer = TmXmlWriter(f)
 
 xml_writer.appendModel(model)
 xml_writer.appendSettings(settings)
 xml_writer.writeToFile()
+print("finished writing results.xml")
+
 
 print("Analysis complete. Exiting...")
 System.exit(0)
