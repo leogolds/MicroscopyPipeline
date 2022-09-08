@@ -1,5 +1,5 @@
-left_channel: D:\Data\MicroscopyPipeline\ser1-1-20\red_short.h5
-right_channel: D:\Data\MicroscopyPipeline\ser1-1-20\green_short.h5
+left_channel: D:\Data\MicroscopyPipeline\ser2-1-20\red.h5
+right_channel: D:\Data\MicroscopyPipeline\ser2-1-20\green.h5
 #left_channel: D:\Data\MicroscopyPipeline\ser1\red.h5
 #right_channel: D:\Data\MicroscopyPipeline\ser1\green.h5
 interactive: true

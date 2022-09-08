@@ -1,5 +1,5 @@
 from typing import Callable
-
+import psutil
 import aicsimageio.transforms
 import numpy as np
 
@@ -80,9 +80,12 @@ def calculate_kymograph(df):
     return df.agg({"area": ["mean", "std"], "perimeter": ["mean", "std"]})
 
 
-def read_stack(path) -> np.ndarray:
-    f = h5py.File(path)
-    return f.get("data", f.get("exported_data"))
+def read_stack(path: Path) -> np.ndarray:
+    if path.suffix == "h5":
+        f = h5py.File(path)
+        return f.get("data", f.get("exported_data"))
+    else:
+        return tifffile.imread(path)
 
 
 def segment_h5_stack(path):
@@ -123,16 +126,23 @@ def segment_h5_stack(path):
 
 
 def segment_frame(img, gpu: bool = False, diameter: int = 25):
-    model_type = "nuclei"
+    # model_type = "nuclei"
+    pretrained_model = rf"D:\Data\cellpose_models\nuclei_red"
+    # pretrained_model = rf"D:\Data\cellpose_models\nuclei_green"
     # diameter = None
     channels = [0, 0]
     net_avg = False
     resample = False
 
-    model = models.Cellpose(
-        gpu=gpu, model_type=model_type
+    # model = models.Cellpose(
+    model = models.CellposeModel(
+        # gpu=gpu, model_type=model_type
+        gpu=gpu,
+        pretrained_model=pretrained_model,
+        nchan=2,
     )  # model_type can be 'cyto' or 'nuclei'
-    masks, flows, styles, diams = model.eval(
+    # masks, flows, styles, diams = model.eval(
+    masks, flows, styles = model.eval(
         img.astype(np.float16, copy=False),
         diameter=diameter,
         channels=channels,
@@ -269,7 +279,11 @@ def run_trackmate(settings_path: Path, data_path: Path):
         detach=True,
         # volumes=volumes,
         mounts=[settings_mount, data_mount],
-        environment={"SETTINGS_XML": settings_path.name, "TIFF_STACK": data_path.name},
+        environment={
+            "SETTINGS_XML": settings_path.name,
+            "TIFF_STACK": data_path.name,
+            "MEMORY": f"{int(psutil.virtual_memory().total // 1024**3 * 0.5)}G",
+        },
     )
 
     for line in container.logs(stream=True):
