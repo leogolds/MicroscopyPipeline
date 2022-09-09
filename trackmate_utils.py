@@ -32,6 +32,7 @@ def pairwise_iterator(iterable):
 
 class TrackmateXML:
     """
+    Derived from https://github.com/rharkes/pyTrackMateXML/blob/master/trackmatexml.py and updated with custom features
     Trackmate-xml is a class around trackmate xml files to simplify some typical operations on the files, while still
     maintaining access to the raw data.
     """

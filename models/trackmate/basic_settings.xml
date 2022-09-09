@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TrackMate version="7.7.2">
+  <Model spatialunits="pixel" timeunits="frame">
+    <FeatureDeclarations>
+      <SpotFeatures>
+        <Feature feature="QUALITY" name="Quality" shortname="Quality" dimension="QUALITY" isint="false" />
+        <Feature feature="POSITION_X" name="X" shortname="X" dimension="POSITION" isint="false" />
+        <Feature feature="POSITION_Y" name="Y" shortname="Y" dimension="POSITION" isint="false" />
+        <Feature feature="POSITION_Z" name="Z" shortname="Z" dimension="POSITION" isint="false" />
+        <Feature feature="POSITION_T" name="T" shortname="T" dimension="TIME" isint="false" />
+        <Feature feature="FRAME" name="Frame" shortname="Frame" dimension="NONE" isint="true" />
+        <Feature feature="RADIUS" name="Radius" shortname="R" dimension="LENGTH" isint="false" />
+        <Feature feature="VISIBILITY" name="Visibility" shortname="Visibility" dimension="NONE" isint="true" />
+        <Feature feature="MANUAL_SPOT_COLOR" name="Manual spot color" shortname="Spot color" dimension="NONE" isint="true" />
+        <Feature feature="MEAN_INTENSITY_CH1" name="Mean intensity ch1" shortname="Mean ch1" dimension="INTENSITY" isint="false" />
+        <Feature feature="MEDIAN_INTENSITY_CH1" name="Median intensity ch1" shortname="Median ch1" dimension="INTENSITY" isint="false" />
+        <Feature feature="MIN_INTENSITY_CH1" name="Min intensity ch1" shortname="Min ch1" dimension="INTENSITY" isint="false" />
+        <Feature feature="MAX_INTENSITY_CH1" name="Max intensity ch1" shortname="Max ch1" dimension="INTENSITY" isint="false" />
+        <Feature feature="TOTAL_INTENSITY_CH1" name="Sum intensity ch1" shortname="Sum ch1" dimension="INTENSITY" isint="false" />
+        <Feature feature="STD_INTENSITY_CH1" name="Std intensity ch1" shortname="Std ch1" dimension="INTENSITY" isint="false" />
+        <Feature feature="CONTRAST_CH1" name="Contrast ch1" shortname="Ctrst ch1" dimension="NONE" isint="false" />
+        <Feature feature="SNR_CH1" name="Signal/Noise ratio ch1" shortname="SNR ch1" dimension="NONE" isint="false" />
+        <Feature feature="ELLIPSE_X0" name="Ellipse center x0" shortname="El. x0" dimension="LENGTH" isint="false" />
+        <Feature feature="ELLIPSE_Y0" name="Ellipse center y0" shortname="El. y0" dimension="LENGTH" isint="false" />
+        <Feature feature="ELLIPSE_MAJOR" name="Ellipse long axis" shortname="El. long axis" dimension="LENGTH" isint="false" />
+        <Feature feature="ELLIPSE_MINOR" name="Ellipse short axis" shortname="El. sh. axis" dimension="LENGTH" isint="false" />
+        <Feature feature="ELLIPSE_THETA" name="Ellipse angle" shortname="El. angle" dimension="ANGLE" isint="false" />
+        <Feature feature="ELLIPSE_ASPECTRATIO" name="Ellipse aspect ratio" shortname="El. a.r." dimension="NONE" isint="false" />
+        <Feature feature="AREA" name="Area" shortname="Area" dimension="AREA" isint="false" />
+        <Feature feature="PERIMETER" name="Perimeter" shortname="Perim." dimension="LENGTH" isint="false" />
+        <Feature feature="CIRCULARITY" name="Circularity" shortname="Circ." dimension="NONE" isint="false" />
+        <Feature feature="SOLIDITY" name="Solidity" shortname="Solidity" dimension="NONE" isint="false" />
+        <Feature feature="SHAPE_INDEX" name="Shape index" shortname="Shape index" dimension="NONE" isint="false" />
+      </SpotFeatures>
+      <EdgeFeatures>
+        <Feature feature="SPOT_SOURCE_ID" name="Source spot ID" shortname="Source ID" dimension="NONE" isint="true" />
+        <Feature feature="SPOT_TARGET_ID" name="Target spot ID" shortname="Target ID" dimension="NONE" isint="true" />
+        <Feature feature="LINK_COST" name="Edge cost" shortname="Cost" dimension="COST" isint="false" />
+      </EdgeFeatures>
+      <TrackFeatures>
+        <Feature feature="TRACK_INDEX" name="Track index" shortname="Index" dimension="NONE" isint="true" />
+        <Feature feature="TRACK_ID" name="Track ID" shortname="ID" dimension="NONE" isint="true" />
+      </TrackFeatures>
+    </FeatureDeclarations>
+    <AllSpots nspots="0" />
+	<AllTracks />
+    <FilteredTracks />
+  </Model>
+  <Settings>
+    <DetectorSettings DETECTOR_NAME="LABEL_IMAGE_DETECTOR" TARGET_CHANNEL="1" SIMPLIFY_CONTOURS="true" />
+    <InitialSpotFilter feature="QUALITY" value="-405.64935064935065" isabove="true" />
+    <SpotFilterCollection>
+      <Filter feature="AREA" value="-1351.3200692041519" isabove="true" />
+      <Filter feature="AREA" value="5776.321799307956" isabove="false" />
+    </SpotFilterCollection>
+    <TrackerSettings TRACKER_NAME="SPARSE_LAP_TRACKER" CUTOFF_PERCENTILE="0.9" ALTERNATIVE_LINKING_COST_FACTOR="1.05" BLOCKING_VALUE="Infinity">
+      <Linking LINKING_MAX_DISTANCE="30.0">
+        <FeaturePenalties />
+      </Linking>
+      <GapClosing ALLOW_GAP_CLOSING="true" GAP_CLOSING_MAX_DISTANCE="30.0" MAX_FRAME_GAP="3">
+        <FeaturePenalties />
+      </GapClosing>
+      <TrackSplitting ALLOW_TRACK_SPLITTING="true" SPLITTING_MAX_DISTANCE="15.0">
+        <FeaturePenalties />
+      </TrackSplitting>
+      <TrackMerging ALLOW_TRACK_MERGING="false" MERGING_MAX_DISTANCE="15.0">
+        <FeaturePenalties />
+      </TrackMerging>
+    </TrackerSettings>
+    <TrackFilterCollection />
+    <AnalyzerCollection>
+      <SpotAnalyzers>
+        <Analyzer key="Manual spot color" />
+        <Analyzer key="Spot intensity" />
+        <Analyzer key="Spot contrast and SNR" />
+        <Analyzer key="Spot fit 2D ellipse" />
+        <Analyzer key="Spot 2D shape descriptors" />
+      </SpotAnalyzers>
+      <EdgeAnalyzers>
+        <Analyzer key="Directional change" />
+        <Analyzer key="Edge speed" />
+        <Analyzer key="Edge target" />
+        <Analyzer key="Edge location" />
+        <Analyzer key="Manual edge color" />
+      </EdgeAnalyzers>
+      <TrackAnalyzers>
+        <Analyzer key="Branching analyzer" />
+        <Analyzer key="Track duration" />
+        <Analyzer key="Track index" />
+        <Analyzer key="Track location" />
+        <Analyzer key="Track speed" />
+        <Analyzer key="Track quality" />
+        <Analyzer key="Track motility analysis" />
+      </TrackAnalyzers>
+    </AnalyzerCollection>
+  </Settings>
+</TrackMate>

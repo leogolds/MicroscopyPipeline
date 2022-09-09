@@ -1,17 +1,6 @@
-from datetime import datetime
-from time import sleep
 import panel as pn
-import param
-import numpy as np
-from numpy import uint8
 from pathlib import Path
-import h5py
-import holoviews as hv
-from holoviews.operation.datashader import regrid
-from typing import Callable
-from skimage.exposure import equalize_adapthist
-from utils import create_dmap_from_image, docker_client
-from ui import MergeChannels
+from wip.ui import MergeChannels
 
 pn.extension(
     sizing_mode="stretch_width",
