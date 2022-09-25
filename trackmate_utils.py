@@ -30,6 +30,25 @@ def pairwise_iterator(iterable):
     return zip(a, a)
 
 
+spots_relevant_columns = [
+    "frame",
+    "POSITION_X",
+    "POSITION_Y",
+    "PERIMETER",
+    "image_id",
+    "AREA",
+    "ROI",
+]
+tracks_relevant_columns = [
+    "EDGE_TIME",
+    "TrackID",
+    "SPOT_SOURCE_ID",
+    "SPOT_TARGET_ID",
+    "EDGE_X_LOCATION",
+    "EDGE_Y_LOCATION",
+]
+
+
 class TrackmateXML:
     """
     Derived from https://github.com/rharkes/pyTrackMateXML/blob/master/trackmatexml.py and updated with custom features
@@ -73,7 +92,7 @@ class TrackmateXML:
         """
         if isinstance(filename, str):
             pth = Path(filename)
-        elif isinstace(filename, Path):
+        elif isinstance(filename, Path):
             pth = filename
         else:
             raise ValueError("not a valid filename")
@@ -124,7 +143,9 @@ class TrackmateXML:
                 all_edges.append(edge_values)
             all_tracks.append(pd.DataFrame(all_edges))
         tracks = pd.concat(all_tracks)
-        return tracks
+        # return tracks
+        # TODO align track and spots ID field usage
+        return tracks[tracks_relevant_columns]
 
     @staticmethod
     def __loadspots(root):
@@ -160,7 +181,9 @@ class TrackmateXML:
         spots = pd.concat(all_frames)
         spots.set_index("ID", inplace=True, verify_integrity=True)
         # spots = spots.astype("float")
-        return spots
+
+        # return spots
+        return spots[spots_relevant_columns]
 
     @cache
     def trace_track(self, track_id, verbose=False):
