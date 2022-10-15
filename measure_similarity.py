@@ -286,28 +286,14 @@ def visualize_spot_v3(images, red_track_id, green_track_id, frame):
 
 
 def construct_complex_track(red_track_id, green_track_id):
-    red_track_df = tm_red.trace_track(red_track_id)
-    green_track_df = tm_green.trace_track(green_track_id)
-
-    overlap_frame_min = max(red_track_df.frame.min(), green_track_df.frame.min())
-    overlap_frame_max = min(red_track_df.frame.max(), green_track_df.frame.max())
-
-    early_red_frames = red_track_df.query("frame < @overlap_frame_min")
-    late_red_frames = red_track_df.query("frame > @overlap_frame_max")
-
-    early_green_frames = green_track_df.query("frame < @overlap_frame_min")
-    late_green_frames = green_track_df.query("frame > @overlap_frame_max")
-
-    overlap_red_frames = red_track_df.query(
-        "@overlap_frame_min <= frame <= @overlap_frame_max+1"
-    )
-    overlap_green_frames = green_track_df.query(
-        "@overlap_frame_min <= frame <= @overlap_frame_max+1"
+    df, (overlap_frame_min, overlap_frame_max) = merge_tracks(
+        red_track_id, green_track_id
     )
 
-    yellow_frames = (
-        pd.concat([overlap_red_frames, overlap_green_frames]).groupby(level=0).mean()
-    )
+    early_red_frames = df.query("frame < @overlap_frame_min and color == 'red'")
+    late_red_frames = df.query("frame > @overlap_frame_max and color == 'red'")
+    early_green_frames = df.query("frame < @overlap_frame_min and color == 'green'")
+    late_green_frames = df.query("frame > @overlap_frame_max and color == 'green'")
 
     early_line = make_track(
         early_red_frames if not early_red_frames.empty else early_green_frames
@@ -315,13 +301,47 @@ def construct_complex_track(red_track_id, green_track_id):
     late_line = make_track(
         late_red_frames if not late_red_frames.empty else late_green_frames
     )
-    yellow_line = make_track(yellow_frames)
+    yellow_line = make_track(df.query("color == 'yellow'"))
 
     # Returns (red, yellow, green) lines
     return (
         early_line if not early_red_frames.empty else late_line,
         yellow_line,
         late_line if not late_green_frames.empty else early_line,
+    )
+
+
+def merge_tracks(red_track_id, green_track_id):
+    red_track_df = tm_red.trace_track(red_track_id)
+    green_track_df = tm_green.trace_track(green_track_id)
+
+    overlap_frame_min = max(red_track_df.frame.min(), green_track_df.frame.min())
+    overlap_frame_max = min(red_track_df.frame.max(), green_track_df.frame.max())
+
+    overlap_red_frames = red_track_df.query(
+        "@overlap_frame_min <= frame <= @overlap_frame_max+1"
+    )
+    overlap_green_frames = green_track_df.query(
+        "@overlap_frame_min <= frame <= @overlap_frame_max+1"
+    )
+    yellow_frames = (
+        pd.concat([overlap_red_frames, overlap_green_frames]).groupby(level=0).mean()
+    )
+
+    red_frames = red_track_df.query(
+        "frame < @overlap_frame_min or frame > @overlap_frame_max"
+    )
+    green_frames = green_track_df.query(
+        "frame < @overlap_frame_min or frame > @overlap_frame_max"
+    )
+
+    yellow_frames["color"] = "yellow"
+    red_frames["color"] = "red"
+    green_frames["color"] = "green"
+
+    return pd.concat([red_frames, green_frames, yellow_frames]).reset_index(), (
+        overlap_frame_min,
+        overlap_frame_max,
     )
 
 
@@ -481,10 +501,6 @@ red_id.value = 7
 
 red_stack = tifffile.TiffFile(base_path / "red.tif").asarray()
 green_stack = tifffile.TiffFile(base_path / "green.tif").asarray()
-
-
-def merge_tracks(red_track_id, green_track_id):
-    pass
 
 
 @pn.depends(frame_wdgt, red_id, green_id)
