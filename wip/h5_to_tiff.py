@@ -6,15 +6,16 @@ import numpy as np
 from tqdm import tqdm
 from aicsimageio.writers.ome_tiff_writer import OmeTiffWriter
 from aicsimageio.transforms import reshape_data
+import tifffile
 
-base_path = Path(r"C:\Data\Code\MicroscopyPipeline\3pos")
+base_path = Path(r"D:\Data\MicroscopyPipeline\ser1_medium")
+# base_path = Path(r"D:\Data\MicroscopyPipeline\ser1-1-20")
 assert base_path.exists()
 
-paths = [
-    path for path in base_path.rglob(r"merged_binary_map.h5") if "C1" not in str(path)
-]
+# paths = [base_path / "segmented.h5"]
+paths = [base_path / "red_segmented.h5", base_path / "green_segmented.h5"]
 
-dataset_name = "exported_data"
+dataset_name = "data"
 
 clip_to_frame = 15
 
@@ -26,9 +27,12 @@ for path in tqdm(paths):
 
     new_file_path = path.parent / f"{path.stem}.tiff"
 
+    # reshaped = reshape_data(stack, "TZYXC", "TCZYX")
     reshaped = reshape_data(stack, "TYX", "TCZYX")
-    OmeTiffWriter.save(
-        reshaped,
-        new_file_path,
-        dim_order="TCZYX",
-    )
+    with tifffile.TiffWriter(new_file_path, bigtiff=True) as tif:
+        tif.write(reshaped, shape=reshaped.shape)
+    # OmeTiffWriter.save(
+    #     reshaped,
+    #     new_file_path,
+    #     dimension_order="TCZYX",
+    # )

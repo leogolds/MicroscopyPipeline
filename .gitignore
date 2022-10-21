@@ -147,3 +147,4 @@ dmypy.json
 *.cppipe
 *.cpproj
 *.doc*
+/*/*/*.tiff.xml
