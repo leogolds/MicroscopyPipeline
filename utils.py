@@ -1,3 +1,5 @@
+from typing import Iterable
+
 import psutil
 import numpy as np
 from pathlib import Path
@@ -8,6 +10,9 @@ from docker.client import DockerClient
 from docker.types import Mount
 from scipy import ndimage
 from tqdm import trange
+import holoviews as hv
+
+hv.extension("bokeh")
 
 
 def read_stack(path: Path) -> np.ndarray:
@@ -16,6 +21,53 @@ def read_stack(path: Path) -> np.ndarray:
         return f.get("data", f.get("exported_data"))
     else:
         return tifffile.imread(path)
+
+
+def view_stacks(images: Iterable[np.ndarray], frame: int):
+    opts = {
+        "aspect": images[0].shape[2] / images[0].shape[1],
+        "invert_yaxis": True,
+        "responsive": True,
+    }
+    bounds = (0, 0, images[0].shape[2], images[0].shape[1])
+
+    # construct holoviews objects
+    hv_images = [
+        hv.Image(np.flipud(img[frame, ...]), bounds=bounds).opts(cmap="gray", **opts)
+        for img in images
+    ]
+
+    layout = hv.Layout(hv_images).cols(1).opts(shared_axes=True)
+
+    return layout
+
+
+def view_segmented_stacks(images: Iterable[np.ndarray], frame: int):
+    layout = view_stacks(images, frame)
+    image_opts = hv.opts.Image(
+        colorbar=False,
+        cmap="glasbey",
+        clipping_colors={"min": "black"},
+    )
+    layout = layout.redim.range(z=(1, np.inf)).opts(image_opts)
+    return layout
+
+
+def view_segmentation_overlay(
+    images: Iterable[np.ndarray], segmentation_maps: Iterable[np.ndarray], frame: int
+):
+    base_layout = view_stacks(images, frame)
+    segmentation_opts = hv.opts.Image(alpha=0.3)
+    segmentation_overlay = view_segmented_stacks(segmentation_maps, frame).opts(
+        segmentation_opts
+    )
+
+    return hv.Layout(
+        [
+            base_img * segmentation
+            for base_img, segmentation in zip(base_layout, segmentation_overlay)
+        ]
+    ).cols(1)
 
 
 def segment_stack(path, model, export_tiff=True):
@@ -53,7 +105,7 @@ def segment_frame(img, model, gpu: bool = False, diameter: int = 25):
 
     model = models.CellposeModel(
         gpu=gpu,
-        pretrained_model=model,
+        pretrained_model=str(model.absolute()),
         nchan=2,
     )
     masks, flows, styles = model.eval(
