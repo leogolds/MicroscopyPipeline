@@ -193,20 +193,11 @@ red_stack = tifffile.TiffFile(base_path / "red.tif").asarray()
 green_stack = tifffile.TiffFile(base_path / "green.tif").asarray()
 
 
-# In[3]:
-
-
 segmented_red = h5py.File(base_path / "red_segmented.h5").get("data")
 segmented_green = h5py.File(base_path / "green_segmented.h5").get("data")
 
 
-# In[4]:
-
-
 scaler = MinMaxScaler()
-
-
-# In[5]:
 
 
 frame_wdgt = pn.widgets.IntSlider(start=0, end=60)
