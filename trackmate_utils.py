@@ -17,11 +17,21 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+from typing import Iterable
+
+import numpy as np
 import pandas as pd
 import xml.etree.ElementTree as ET
 from pathlib import Path
+
+from shapely.affinity import translate
+from shapely.geometry import Polygon, LineString
 from shapely.geometry.linestring import LineString
 from functools import cache
+import holoviews as hv
+import hvplot.pandas
+
+from utils import view_stacks
 
 
 def pairwise_iterator(iterable):
@@ -235,3 +245,75 @@ class TrackmateXML:
         # )
         return whole_track  # , track_splits
         # return line, whole_track, track_splits
+
+
+def make_perimeter(df):
+    return df.apply(make_polygon, axis="columns")
+
+
+def make_hv_perimeter(df):
+    df = df.apply(make_polygon, axis="columns")
+    return hv.Polygons(df.iloc[0].exterior.xy)
+
+
+def make_polygon(df):
+    polygon = Polygon(df.ROI)
+    x, y = df.POSITION_X, df.POSITION_Y
+    polygon = translate(polygon, x + 0.5, y + 0.5)
+
+    return polygon
+
+
+def make_path(df):
+    line = LineString(
+        df[["POSITION_X", "POSITION_Y"]]
+        .astype(float)
+        .itertuples(index=False, name=None)
+    )
+    return line
+
+
+def make_hv_path(df):
+    line = LineString(
+        df[["POSITION_X", "POSITION_Y"]]
+        .astype(float)
+        .itertuples(index=False, name=None)
+    )
+    return hv.Path(line.coords)
+
+
+def view_track(
+    images: Iterable[np.ndarray], frame: int, track: pd.DataFrame, zoom=False
+):
+    layout = view_stacks(images, frame)
+
+    path = make_hv_path(track)
+    layout = (
+        layout
+        * path.opts(color="red", line_width=2)
+        # * track.hvplot.scatter(x="POSITION_X", y="POSITION_Y").opts(
+        #     color="red", marker="o"
+        # )
+    )
+    spot_in_frame = track.query("frame == @frame")
+    if not spot_in_frame.empty:
+        perimeter = make_hv_perimeter(spot_in_frame)
+        layout = layout * perimeter.opts(line_color="red", line_width=2, color=None)
+
+        if zoom:
+            cell_x, cell_y = spot_in_frame[["POSITION_X", "POSITION_Y"]].values[0]
+            zoom_opts = hv.opts.Image(
+                xlim=(cell_x - 30, cell_x + 30),
+                ylim=(cell_y - 30, cell_y + 30),
+                aspect=1,
+            )
+            layout = layout.opts(zoom_opts)
+
+    return layout.cols(1)
+
+
+def view_side_by_side(images: Iterable[np.ndarray], frame: int, track: pd.DataFrame):
+    # TODO does not work, puts all images in one line
+    return hv.Layout(
+        [view_track(images, frame, track), view_track(images, frame, track, zoom=True)]
+    ).opts(shared_axes=False)
