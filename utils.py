@@ -70,7 +70,7 @@ def view_segmentation_overlay(
     ).cols(1)
 
 
-def segment_stack(path, model, export_tiff=True):
+def segment_stack(path: Path, model: Path, export_tiff=True):
     print(f"segmenting stack at {path} with model at {model}")
     stack = read_stack(path)
 
@@ -98,7 +98,7 @@ def segment_stack(path, model, export_tiff=True):
     print("segmentation complete")
 
 
-def segment_frame(img, model, gpu: bool = False, diameter: int = 25):
+def segment_frame(img, model: Path, gpu: bool = False, diameter: int = 25):
     channels = [0, 0]
     net_avg = False
     resample = False
@@ -157,6 +157,28 @@ def run_trackmate(settings_path: Path, data_path: Path):
         print(line.decode("utf-8"))
 
     print(f"Tracking on {data_path} complete")
+
+
+def run_analysis(
+    stack_path: Path, cellpose_model_path: Path, trackmate_config_path: Path
+):
+    assert stack_path.exists(), f"Could not find image stack at {stack_path.absolute()}"
+    assert (
+        cellpose_model_path.exists()
+    ), f"Could not find CellPose model at {cellpose_model_path.absolute()}"
+    segment_stack(stack_path, cellpose_model_path)
+    segmented_stack_path = stack_path.parent / f"{stack_path.stem}_segmented.tiff"
+
+    assert (
+        trackmate_config_path.exists()
+    ), f"Could not find TrackMate xml at {trackmate_config_path.absolute()}"
+    run_trackmate(trackmate_config_path, segmented_stack_path)
+    trackmate_results_path = (
+        segmented_stack_path.parent / f"{segmented_stack_path.stem}.xml"
+    )
+
+    print(f"Segmentation map saved to:\t{segmented_stack_path.absolute()}")
+    print(f"Tracking result saved to:\t{trackmate_results_path.absolute()}")
 
 
 docker_client = DockerClient()
