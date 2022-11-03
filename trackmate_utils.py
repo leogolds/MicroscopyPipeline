@@ -17,6 +17,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+import itertools
 from typing import Iterable
 
 import numpy as np
@@ -24,6 +25,7 @@ import pandas as pd
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+import tqdm
 from shapely.affinity import translate
 from shapely.geometry import Polygon, LineString
 from shapely.geometry.linestring import LineString
@@ -402,3 +404,56 @@ def draw_fucci_measurement(
             alpha=0.3, color="green"
         )
     )
+
+
+class CartesianSimilarity:
+    def __init__(self, tm_red: TrackmateXML, tm_green: TrackmateXML):
+        self.tm_red = tm_red
+        self.tm_green = tm_green
+
+    @cache
+    def calculate_metric(self, green_track_id, red_track_id):
+        red_track_df = self.tm_red.trace_track(red_track_id)
+        green_track_df = self.tm_green.trace_track(green_track_id)
+        min_frame = max(red_track_df.frame.min(), green_track_df.frame.min())
+        max_frame = min(red_track_df.frame.max(), green_track_df.frame.max())
+
+        red_track_df = red_track_df.query("@min_frame <= frame <= @max_frame")
+        green_track_df = green_track_df.query("@min_frame <= frame <= @max_frame")
+
+        if len(red_track_df) < 5 or len(green_track_df) < 5:
+            return np.inf
+
+        sse = (
+            (
+                (
+                    red_track_df.reset_index().POSITION_X
+                    - green_track_df.reset_index().POSITION_X
+                )
+                ** 2
+                + (
+                    red_track_df.reset_index().POSITION_Y
+                    - green_track_df.reset_index().POSITION_Y
+                )
+                ** 2
+            )
+            ** 0.5
+        ).sum()
+
+        return sse / (max_frame - min_frame)
+
+    def calculate_metric_for_all_tracks(self):
+        red_track_ids = self.tm_green.tracks.TrackID.unique().tolist()
+        green_track_ids = self.tm_green.tracks.TrackID.unique().tolist()
+        combinations = list(
+            itertools.product(
+                red_track_ids,
+                green_track_ids,
+            )
+        )
+
+        metrics = [self.calculate_metric(g, r) for r, g in tqdm.tqdm(combinations)]
+        df = pd.DataFrame(columns=["red_track", "green_track"], data=combinations)
+        df["metric"] = metrics
+
+        return df
