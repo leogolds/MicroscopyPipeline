@@ -30,8 +30,11 @@ from shapely.geometry.linestring import LineString
 from functools import cache
 import holoviews as hv
 import hvplot.pandas
+from sklearn.preprocessing import MinMaxScaler
 
 from utils import view_stacks
+
+hv.extension("bokeh")
 
 
 def pairwise_iterator(iterable):
@@ -317,3 +320,85 @@ def view_side_by_side(images: Iterable[np.ndarray], frame: int, track: pd.DataFr
     return hv.Layout(
         [view_track(images, frame, track), view_track(images, frame, track, zoom=True)]
     ).opts(shared_axes=False)
+
+
+def measure_spot(df, segmentation_map, stack):
+    masked_array = np.ma.masked_where(
+        segmentation_map[df.frame, ...] != df.image_id, stack[df.frame, ...]
+    )
+    return (
+        masked_array.mean(),
+        masked_array.std(),
+    )
+
+
+def measure_track(track: pd.DataFrame, segmentation_map, stack):
+    # track[["mean_red", "std_red", "mean_green", "std_green"]] = track.apply(
+    #     measure_spot,
+    #     segmentation_map=segmentation_map,
+    #     stack=stack,
+    #     axis="columns",
+    #     result_type="expand",
+    # )
+    return track.apply(
+        measure_spot,
+        segmentation_map=segmentation_map,
+        stack=stack,
+        axis="columns",
+        result_type="expand",
+    )
+
+
+scaler = MinMaxScaler()
+
+
+def view_red_green_track(
+    images: Iterable[np.ndarray], red_track, green_track, frame=None
+):
+    frame = frame if frame else max(red_track.frame.min(), green_track.frame.min())
+    layout = view_track(images, frame, red_track)
+
+    green_path = make_hv_path(green_track).opts(color="green")
+    layout = layout * green_path
+    green_spot = green_track.query("frame == @frame")
+    if not green_spot.empty:
+        green_perimeter = make_hv_perimeter(green_spot)
+        layout = layout * green_perimeter.opts(
+            line_color="green", line_width=2, color=None
+        )
+
+    return layout
+
+
+def draw_fucci_measurement(
+    df: pd.DataFrame,
+    segmentation_map: np.ndarray,
+    red_stack: np.ndarray,
+    green_stack: np.ndarray,
+):
+    df[["mean_red", "std_red"]] = measure_track(df, segmentation_map, red_stack)
+    df[["mean_green", "std_green"]] = measure_track(df, segmentation_map, green_stack)
+    df["std_red"] = df.std_red / df.mean_red
+    df["std_green"] = df.std_green / df.mean_green
+
+    df[["mean_red", "mean_green"]] = pd.DataFrame(
+        scaler.fit_transform(df[["mean_red", "mean_green"]].values),
+        columns=["mean_red", "mean_green"],
+        index=df.index,
+    )
+
+    df["low_red"] = df["mean_red"] - df["std_red"]
+    df["high_red"] = df["mean_red"] + df["std_red"]
+    df["low_green"] = df["mean_green"] - df["std_green"]
+    df["high_green"] = df["mean_green"] + df["std_green"]
+
+    return (
+        df.hvplot(x="frame", y="mean_red").opts(color="red")
+        * df.hvplot.area(x="frame", y="low_red", y2="high_red").opts(
+            alpha=0.3, color="red"
+        )
+        * df.hvplot(x="frame", y="mean_green").opts(color="green")
+        * df.hvplot.area(x="frame", y="low_green", y2="high_green").opts(
+            alpha=0.3, color="green"
+        )
+    )

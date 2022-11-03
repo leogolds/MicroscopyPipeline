@@ -159,7 +159,7 @@ def run_trackmate(settings_path: Path, data_path: Path):
     print(f"Tracking on {data_path} complete")
 
 
-def run_analysis(
+def run_pipeline(
     stack_path: Path, cellpose_model_path: Path, trackmate_config_path: Path
 ):
     assert stack_path.exists(), f"Could not find image stack at {stack_path.absolute()}"
