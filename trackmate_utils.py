@@ -53,6 +53,7 @@ spots_relevant_columns = [
     "image_id",
     "AREA",
     "ROI",
+    "roi_polygon",
 ]
 tracks_relevant_columns = [
     "EDGE_TIME",
@@ -196,6 +197,9 @@ class TrackmateXML:
         spots = pd.concat(all_frames)
         spots.set_index("ID", inplace=True, verify_integrity=True)
         # spots = spots.astype("float")
+
+        spots["roi_polygon"] = spots.apply(make_polygon, axis="columns")
+        spots["AREA"] = pd.to_numeric(spots.AREA)
 
         # return spots
         return spots[spots_relevant_columns]
@@ -457,3 +461,64 @@ class CartesianSimilarity:
         df["metric"] = metrics
 
         return df
+
+    def merge_tracks(self, red_track_id, green_track_id):
+        red_track_df = self.tm_red.trace_track(red_track_id)
+        green_track_df = self.tm_green.trace_track(green_track_id)
+
+        overlap_frame_min = max(red_track_df.frame.min(), green_track_df.frame.min())
+        overlap_frame_max = min(red_track_df.frame.max(), green_track_df.frame.max())
+
+        overlap_red_frames = red_track_df.query(
+            "@overlap_frame_min <= frame <= @overlap_frame_max+1"
+        )
+        overlap_green_frames = green_track_df.query(
+            "@overlap_frame_min <= frame <= @overlap_frame_max+1"
+        )
+        # df = red_track_df.merge(
+        #     green_track_df,
+        #     on="frame",
+        #     how="outer",
+        #     suffixes=("_red", "_green"),
+        #     indicator=True,
+        # )
+
+        rows = []
+        for frame in range(overlap_frame_min, overlap_frame_max + 1):
+            r = red_track_df.query("frame == @frame")
+            g = green_track_df.query("frame == @frame")
+
+            row = (r if g.empty else g).copy()
+            row["source_track"] = "red" if g.empty else "green"
+            if not r.empty and not g.empty:
+                row = (r if r.AREA.values > g.AREA.values else g).copy()
+                row["source_track"] = (
+                    "red" if r.AREA.values > g.AREA.values else "green"
+                )
+                row["POSITION_Y"] = np.mean([r.POSITION_X, g.POSITION_X])
+                row["POSITION_Y"] = np.mean([r.POSITION_Y, g.POSITION_Y])
+            rows.append(row)
+        yellow_frames = pd.concat(rows)
+        # yellow_frames = (
+        #     pd.concat([overlap_red_frames, overlap_green_frames])
+        #     .groupby("frame")[["frame", "POSITION_X", "POSITION_Y"]]
+        #     .mean()
+        #     .astype({"frame": "int"})
+        # )
+
+        red_frames = red_track_df.query(
+            "frame < @overlap_frame_min or frame > @overlap_frame_max"
+        ).copy()
+        green_frames = green_track_df.query(
+            "frame < @overlap_frame_min or frame > @overlap_frame_max"
+        ).copy()
+
+        yellow_frames["color"] = "yellow"
+        red_frames["color"] = "red"
+        red_frames["source_track"] = "red"
+        green_frames["color"] = "green"
+        green_frames["source_track"] = "green"
+
+        return pd.concat([red_frames, green_frames, yellow_frames]).reset_index(
+            drop=True
+        )
