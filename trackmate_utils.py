@@ -410,6 +410,56 @@ def draw_fucci_measurement(
     )
 
 
+def draw_fucci_measurement_merged_track(
+    df: pd.DataFrame,
+    red_segmentation_map: np.ndarray,
+    green_segmentation_map: np.ndarray,
+    red_stack: np.ndarray,
+    green_stack: np.ndarray,
+):
+    df_red_segmap = df.query('source_track == "red"').copy()
+    df_green_segmap = df.query('source_track == "green"').copy()
+
+    df_red_segmap[["mean_red", "std_red"]] = measure_track(
+        df, red_segmentation_map, red_stack
+    )
+    df_red_segmap[["mean_green", "std_green"]] = measure_track(
+        df, red_segmentation_map, green_stack
+    )
+    df_green_segmap[["mean_red", "std_red"]] = measure_track(
+        df, green_segmentation_map, red_stack
+    )
+    df_green_segmap[["mean_green", "std_green"]] = measure_track(
+        df, green_segmentation_map, green_stack
+    )
+
+    df = pd.concat([df_red_segmap, df_green_segmap])
+    df["std_red"] = df.std_red / df.mean_red
+    df["std_green"] = df.std_green / df.mean_green
+
+    df[["mean_red", "mean_green"]] = pd.DataFrame(
+        scaler.fit_transform(df[["mean_red", "mean_green"]].values),
+        columns=["mean_red", "mean_green"],
+        index=df.index,
+    )
+
+    df["low_red"] = df["mean_red"] - df["std_red"]
+    df["high_red"] = df["mean_red"] + df["std_red"]
+    df["low_green"] = df["mean_green"] - df["std_green"]
+    df["high_green"] = df["mean_green"] + df["std_green"]
+
+    return (
+        df.hvplot(x="frame", y="mean_red").opts(color="red")
+        * df.hvplot.area(x="frame", y="low_red", y2="high_red").opts(
+            alpha=0.3, color="red"
+        )
+        * df.hvplot(x="frame", y="mean_green").opts(color="green")
+        * df.hvplot.area(x="frame", y="low_green", y2="high_green").opts(
+            alpha=0.3, color="green"
+        )
+    )
+
+
 class CartesianSimilarity:
     def __init__(self, tm_red: TrackmateXML, tm_green: TrackmateXML):
         self.tm_red = tm_red
