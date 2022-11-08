@@ -18,6 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 import itertools
+from enum import Enum, auto
 from typing import Iterable
 
 import numpy as np
@@ -37,6 +38,7 @@ from sklearn.preprocessing import MinMaxScaler
 from utils import view_stacks
 
 hv.extension("bokeh")
+import panel as pn
 
 
 def pairwise_iterator(iterable):
@@ -506,12 +508,16 @@ class CartesianSimilarity:
             )
         )
 
-        metrics = [self.calculate_metric(g, r) for r, g in tqdm.tqdm(combinations)]
+        metrics = [
+            self.calculate_metric(g, r)
+            for r, g in tqdm.tqdm(combinations, desc="Calculating similarity metric")
+        ]
         df = pd.DataFrame(columns=["red_track", "green_track"], data=combinations)
         df["metric"] = metrics
 
-        return df
+        return df.sort_values("metric")
 
+    @cache
     def merge_tracks(self, red_track_id, green_track_id):
         red_track_df = self.tm_red.trace_track(red_track_id)
         green_track_df = self.tm_green.trace_track(green_track_id)
@@ -569,6 +575,35 @@ class CartesianSimilarity:
         green_frames["color"] = "green"
         green_frames["source_track"] = "green"
 
-        return pd.concat([red_frames, green_frames, yellow_frames]).reset_index(
-            drop=True
+        return (
+            pd.concat([red_frames, green_frames, yellow_frames])
+            .reset_index(drop=True)
+            .sort_values("frame")
         )
+
+
+class ViewType(Enum):
+    individual = auto()
+    merged = auto()
+
+
+class TrackViewer:
+    def __init__(
+        self, red_stack, green_stack, tm_red: TrackmateXML, tm_green: TrackmateXML
+    ):
+        self.red_stack = red_stack
+        self.green_stack = green_stack
+        self.tm_red = tm_red
+        self.tm_green = tm_green
+
+        self.metric = CartesianSimilarity(tm_red, tm_green)
+        self.df = self.metric.calculate_metric_for_all_tracks()
+
+        self.view_type_wdgt = pn.widgets.RadioButtonGroup(
+            name="View Type", options=[t.name for t in ViewType], button_type="primary"
+        )
+        self.frame_wdgt = pn.widgets.IntSlider(name="Frame")
+        self.metric_wdgt = pn.widgets.Tabulator(self.df, page_size=7, show_index=False)
+
+    def view(self):
+        return pn.Column(self.view_type_wdgt, self.frame_wdgt, self.metric_wdgt)
