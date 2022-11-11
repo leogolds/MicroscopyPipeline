@@ -602,11 +602,18 @@ class ViewType(Enum):
     merged = auto()
 
 
+def view_merged_track(param, merged_track, merged_track1, frame):
+    # TODO view red/yellow/green track
+    return hv.Text(0, 0, "merged_track")
+
+
 class TrackViewer(param.Parameterized):
     current_red_track = param.Integer()
     current_green_track = param.Integer()
     frame = param.Integer()
-    view_type = param.ObjectSelector()
+    view_type = param.ObjectSelector(
+        default=ViewType.individual.name, objects=[t.name for t in ViewType]
+    )
 
     def __init__(
         self,
@@ -629,9 +636,10 @@ class TrackViewer(param.Parameterized):
 
         self.view_type_wdgt = pn.widgets.RadioButtonGroup.from_param(
             self.param.view_type,
-            name="View Type",
-            options=[t.name for t in ViewType],
-            button_type="primary",
+            opts={
+                "name": "View Type",
+                "button_type": "primary",  # TODO why is the button not taking the primary color?
+            },
         )
         self.frame_wdgt = pn.widgets.IntSlider.from_param(self.param.frame)
         self.metric_wdgt = pn.widgets.Tabulator(self.df, page_size=7, show_index=False)
@@ -662,7 +670,7 @@ class TrackViewer(param.Parameterized):
         "current_green_track",
         "frame",
         "view_type",
-        watch=True,
+        # watch=True,
     )
     def make_images(self):
         print(
@@ -670,15 +678,30 @@ class TrackViewer(param.Parameterized):
         )
         # red_track = self.tm_red.trace_track(red_track_id)
         # green_track = self.tm_green.trace_track(green_track_id)
-        red_track = self.tm_red.trace_track(self.current_red_track)
-        green_track = self.tm_green.trace_track(self.current_green_track)
 
-        large = view_red_green_track(
-            [self.red_stack, self.green_stack],
-            red_track,
-            green_track,
-            frame=self.frame_wdgt.value,
-        )
+        large = hv.Text(0, 0, "empty")
+
+        if ViewType[self.view_type] is ViewType.merged:
+            merged_track = self.metric.merge_tracks(
+                self.current_red_track, self.current_green_track
+            )
+
+            large = view_merged_track(
+                [self.red_stack, self.green_stack],
+                merged_track,
+                merged_track,
+                frame=self.frame_wdgt.value,
+            )
+
+        if ViewType[self.view_type] is ViewType.individual:
+            red_track = self.tm_red.trace_track(self.current_red_track)
+            green_track = self.tm_green.trace_track(self.current_green_track)
+            large = view_red_green_track(
+                [self.red_stack, self.green_stack],
+                red_track,
+                green_track,
+                frame=self.frame_wdgt.value,
+            )
 
         # a = red_track.query("frame == @self.frame")
         # spot_in_frame = a if not a.empty else green_track.query("frame == @self.frame")
