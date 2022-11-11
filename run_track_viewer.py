@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pandas as pd
+
 import utils
 import trackmate_utils
 
@@ -21,8 +23,12 @@ tm_green = trackmate_utils.TrackmateXML(base_data_path / "green_segmented.tiff.x
 red_stack = utils.read_stack(base_data_path / "red.tif")
 green_stack = utils.read_stack(base_data_path / "green.tif")
 
-metric = trackmate_utils.CartesianSimilarity(tm_red, tm_green)
-metric_df = metric.calculate_metric_for_all_tracks()
+# metric = trackmate_utils.CartesianSimilarity(tm_red, tm_green)
+# metric_df = metric.calculate_metric_for_all_tracks()
+# metric_df.to_hdf(base_data_path / "metric.h5", key="metric")
+metric_df = pd.read_hdf(base_data_path / "metric.h5", key="metric")
+metric = trackmate_utils.CartesianSimilarityFromFile(tm_red, tm_green, metric_df)
+
 
 viewer = trackmate_utils.TrackViewer(red_stack, green_stack, tm_red, tm_green, metric)
 viewer.view().show()

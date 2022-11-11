@@ -583,6 +583,20 @@ class CartesianSimilarity:
         )
 
 
+class CartesianSimilarityFromFile(CartesianSimilarity):
+    def __init__(
+        self, tm_red: TrackmateXML, tm_green: TrackmateXML, metric: pd.DataFrame
+    ):
+        super().__init__(tm_red, tm_green)
+        self.metric_df = metric
+
+    @cache
+    def calculate_metric(self, green_track_id, red_track_id):
+        return self.metric_df.query(
+            "green_track == @green_track_id and red_track == @red_track_id"
+        ).metric.item()
+
+
 class ViewType(Enum):
     individual = auto()
     merged = auto()
@@ -592,6 +606,7 @@ class TrackViewer(param.Parameterized):
     current_red_track = param.Integer()
     current_green_track = param.Integer()
     frame = param.Integer()
+    view_type = param.ObjectSelector()
 
     def __init__(
         self,
@@ -612,8 +627,11 @@ class TrackViewer(param.Parameterized):
         self.metric = metric if metric else CartesianSimilarity(tm_red, tm_green)
         self.df = self.metric.calculate_metric_for_all_tracks()
 
-        self.view_type_wdgt = pn.widgets.RadioButtonGroup(
-            name="View Type", options=[t.name for t in ViewType], button_type="primary"
+        self.view_type_wdgt = pn.widgets.RadioButtonGroup.from_param(
+            self.param.view_type,
+            name="View Type",
+            options=[t.name for t in ViewType],
+            button_type="primary",
         )
         self.frame_wdgt = pn.widgets.IntSlider.from_param(self.param.frame)
         self.metric_wdgt = pn.widgets.Tabulator(self.df, page_size=7, show_index=False)
@@ -643,10 +661,13 @@ class TrackViewer(param.Parameterized):
         "current_red_track",
         "current_green_track",
         "frame",
+        "view_type",
         watch=True,
     )
     def make_images(self):
-        print(f"{self.current_red_track}, {self.current_green_track}, {self.frame}")
+        print(
+            f"{self.current_red_track}, {self.current_green_track}, {self.frame}, {self.view_type}"
+        )
         # red_track = self.tm_red.trace_track(red_track_id)
         # green_track = self.tm_green.trace_track(green_track_id)
         red_track = self.tm_red.trace_track(self.current_red_track)
