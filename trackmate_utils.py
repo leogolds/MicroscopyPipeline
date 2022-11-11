@@ -26,6 +26,7 @@ import pandas as pd
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+import param
 import tqdm
 from shapely.affinity import translate
 from shapely.geometry import Polygon, LineString
@@ -362,7 +363,7 @@ scaler = MinMaxScaler()
 
 def view_red_green_track(
     images: Iterable[np.ndarray], red_track, green_track, frame=None
-):
+) -> hv.Layout:
     frame = frame if frame else max(red_track.frame.min(), green_track.frame.min())
     layout = view_track(images, frame, red_track)
 
@@ -515,7 +516,7 @@ class CartesianSimilarity:
         df = pd.DataFrame(columns=["red_track", "green_track"], data=combinations)
         df["metric"] = metrics
 
-        return df.sort_values("metric")
+        return df.sort_values("metric").reset_index(drop=True)
 
     @cache
     def merge_tracks(self, red_track_id, green_track_id):
@@ -587,23 +588,116 @@ class ViewType(Enum):
     merged = auto()
 
 
-class TrackViewer:
+class TrackViewer(param.Parameterized):
+    current_red_track = param.Integer()
+    current_green_track = param.Integer()
+    frame = param.Integer()
+
     def __init__(
-        self, red_stack, green_stack, tm_red: TrackmateXML, tm_green: TrackmateXML
+        self,
+        red_stack,
+        green_stack,
+        tm_red: TrackmateXML,
+        tm_green: TrackmateXML,
+        metric: CartesianSimilarity = None,
+        **params,
     ):
+        super().__init__(**params)
+
         self.red_stack = red_stack
         self.green_stack = green_stack
         self.tm_red = tm_red
         self.tm_green = tm_green
 
-        self.metric = CartesianSimilarity(tm_red, tm_green)
+        self.metric = metric if metric else CartesianSimilarity(tm_red, tm_green)
         self.df = self.metric.calculate_metric_for_all_tracks()
 
         self.view_type_wdgt = pn.widgets.RadioButtonGroup(
             name="View Type", options=[t.name for t in ViewType], button_type="primary"
         )
-        self.frame_wdgt = pn.widgets.IntSlider(name="Frame")
+        self.frame_wdgt = pn.widgets.IntSlider.from_param(self.param.frame)
         self.metric_wdgt = pn.widgets.Tabulator(self.df, page_size=7, show_index=False)
+        self.metric_wdgt.on_click(self.metric_selected)
+
+        top_red_track = self.df.loc[0].red_track.item()
+        top_green_track = self.df.loc[0].green_track.item()
+        track = self.metric.merge_tracks(
+            red_track_id=top_red_track,
+            green_track_id=top_green_track,
+        )
+        self.current_red_track = int(top_red_track)
+        self.current_green_track = int(top_green_track)
+        self.frame_wdgt.start = track.frame.min().item()
+        self.frame_wdgt.end = track.frame.max().item()
+        self.frame_wdgt.value = track.query('color == "yellow"').frame.min().item()
+
+        # self.images = pn.Row(
+        #     self.make_images(
+        #         # self.df.iloc[0].red_track.item(),
+        #         # self.df.iloc[0].green_track.item(),
+        #     )
+        # )
+        # self.graphs = self.make_graphs()
+
+    @pn.depends(
+        "current_red_track",
+        "current_green_track",
+        "frame",
+        watch=True,
+    )
+    def make_images(self):
+        print(f"{self.current_red_track}, {self.current_green_track}, {self.frame}")
+        # red_track = self.tm_red.trace_track(red_track_id)
+        # green_track = self.tm_green.trace_track(green_track_id)
+        red_track = self.tm_red.trace_track(self.current_red_track)
+        green_track = self.tm_green.trace_track(self.current_green_track)
+
+        large = view_red_green_track(
+            [self.red_stack, self.green_stack],
+            red_track,
+            green_track,
+            frame=self.frame_wdgt.value,
+        )
+
+        # a = red_track.query("frame == @self.frame")
+        # spot_in_frame = a if not a.empty else green_track.query("frame == @self.frame")
+        # # if spot_in_frame.empty:
+        # #     return pn.pane.HoloViews(large)
+        #
+        # cell_x, cell_y = spot_in_frame[["POSITION_X", "POSITION_Y"]].values[0]
+        # zoom_opts = hv.opts.Image(
+        #     xlim=(cell_x - 30, cell_x + 30),
+        #     ylim=(cell_y - 30, cell_y + 30),
+        #     aspect=1,
+        # )
+        # zoom = large.opts(zoom_opts, clone=True)
+        # return pn.Row(pn.pane.HoloViews(large), pn.pane.HoloViews(zoom))
+        return pn.pane.HoloViews(large)
+
+    def metric_selected(self, event):
+        print(
+            f"Clicked cell in {event.column!r} column, row {event.row!r} with value {event.value!r}"
+        )
+        track = self.metric.merge_tracks(
+            red_track_id=self.df.loc[event.row].red_track.item(),
+            green_track_id=self.df.loc[event.row].green_track.item(),
+        )
+        self.frame_wdgt.start = track.frame.min().item()
+        self.frame_wdgt.end = track.frame.max().item()
+        self.current_red_track = int(self.df.loc[event.row].red_track.item())
+        self.current_green_track = int(self.df.loc[event.row].green_track.item())
+        self.frame_wdgt.value = track.query('color == "yellow"').frame.min().item()
+
+        # self.images.objects[:] = [
+        #     self.make_images(
+        #         self.df.loc[event.row].red_track.item(),
+        #         self.df.loc[event.row].green_track.item(),
+        #     )
+        # ]
 
     def view(self):
-        return pn.Column(self.view_type_wdgt, self.frame_wdgt, self.metric_wdgt)
+        return pn.Row(
+            # self.images,
+            self.make_images,
+            pn.Column(self.view_type_wdgt, self.frame_wdgt, self.metric_wdgt),
+        )
