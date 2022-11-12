@@ -57,6 +57,8 @@ spots_relevant_columns = [
     "AREA",
     "ROI",
     "roi_polygon",
+    "ELLIPSE_MAJOR",
+    "ELLIPSE_MINOR",
 ]
 tracks_relevant_columns = [
     "EDGE_TIME",
@@ -430,41 +432,9 @@ def draw_fucci_measurement_merged_track(
     green_stack: np.ndarray,
     frame: int = None,
 ):
-    df_red_segmap = df.query('source_track == "red"').copy()
-    df_green_segmap = df.query('source_track == "green"').copy()
-
-    df_red_segmap[["mean_red", "std_red"]] = measure_track(
-        df_red_segmap, red_segmentation_map, red_stack
+    df = measure_merged(
+        df, green_segmentation_map, green_stack, red_segmentation_map, red_stack
     )
-    df_red_segmap[["mean_green", "std_green"]] = measure_track(
-        df_red_segmap, red_segmentation_map, green_stack
-    )
-    df_green_segmap[["mean_red", "std_red"]] = measure_track(
-        df_green_segmap, green_segmentation_map, red_stack
-    )
-    df_green_segmap[["mean_green", "std_green"]] = measure_track(
-        df_green_segmap, green_segmentation_map, green_stack
-    )
-
-    try:
-        df = pd.concat([df_red_segmap, df_green_segmap])
-    except ValueError:
-        df = pd.DataFrame(
-            columns=["mean_red", "std_red", "mean_green", "std_green", *df.columns]
-        )
-    df["std_red"] = df.std_red / df.mean_red
-    df["std_green"] = df.std_green / df.mean_green
-
-    df[["mean_red", "mean_green"]] = pd.DataFrame(
-        scaler.fit_transform(df[["mean_red", "mean_green"]].values),
-        columns=["mean_red", "mean_green"],
-        index=df.index,
-    )
-
-    df["low_red"] = df["mean_red"] - df["std_red"]
-    df["high_red"] = df["mean_red"] + df["std_red"]
-    df["low_green"] = df["mean_green"] - df["std_green"]
-    df["high_green"] = df["mean_green"] + df["std_green"]
 
     return (
         df.hvplot(x="frame", y="mean_red", responsive=True, min_height=200).opts(
@@ -483,6 +453,43 @@ def draw_fucci_measurement_merged_track(
             hv.opts.VLine(color="grey", line_width=3)
         )
     ).opts(responsive=True)
+
+
+def measure_merged(
+    df, green_segmentation_map, green_stack, red_segmentation_map, red_stack
+):
+    df_red_segmap = df.query('source_track == "red"').copy()
+    df_green_segmap = df.query('source_track == "green"').copy()
+    df_red_segmap[["mean_red", "std_red"]] = measure_track(
+        df_red_segmap, red_segmentation_map, red_stack
+    )
+    df_red_segmap[["mean_green", "std_green"]] = measure_track(
+        df_red_segmap, red_segmentation_map, green_stack
+    )
+    df_green_segmap[["mean_red", "std_red"]] = measure_track(
+        df_green_segmap, green_segmentation_map, red_stack
+    )
+    df_green_segmap[["mean_green", "std_green"]] = measure_track(
+        df_green_segmap, green_segmentation_map, green_stack
+    )
+    try:
+        df = pd.concat([df_red_segmap, df_green_segmap])
+    except ValueError:
+        df = pd.DataFrame(
+            columns=["mean_red", "std_red", "mean_green", "std_green", *df.columns]
+        )
+    df["std_red"] = df.std_red / df.mean_red
+    df["std_green"] = df.std_green / df.mean_green
+    df[["mean_red", "mean_green"]] = pd.DataFrame(
+        scaler.fit_transform(df[["mean_red", "mean_green"]].values),
+        columns=["mean_red", "mean_green"],
+        index=df.index,
+    )
+    df["low_red"] = df["mean_red"] - df["std_red"]
+    df["high_red"] = df["mean_red"] + df["std_red"]
+    df["low_green"] = df["mean_green"] - df["std_green"]
+    df["high_green"] = df["mean_green"] + df["std_green"]
+    return df
 
 
 class CartesianSimilarity:
