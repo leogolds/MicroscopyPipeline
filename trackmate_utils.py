@@ -349,13 +349,14 @@ def measure_track(track: pd.DataFrame, segmentation_map, stack):
     #     axis="columns",
     #     result_type="expand",
     # )
-    return track.apply(
+    result = track.apply(
         measure_spot,
         segmentation_map=segmentation_map,
         stack=stack,
         axis="columns",
         result_type="expand",
     )
+    return result if not result.empty else pd.DataFrame(columns=["mean_red", "std_red"])
 
 
 scaler = MinMaxScaler()
@@ -384,6 +385,7 @@ def draw_fucci_measurement(
     segmentation_map: np.ndarray,
     red_stack: np.ndarray,
     green_stack: np.ndarray,
+    frame: int = None,
 ):
     df[["mean_red", "std_red"]] = measure_track(df, segmentation_map, red_stack)
     df[["mean_green", "std_green"]] = measure_track(df, segmentation_map, green_stack)
@@ -402,15 +404,22 @@ def draw_fucci_measurement(
     df["high_green"] = df["mean_green"] + df["std_green"]
 
     return (
-        df.hvplot(x="frame", y="mean_red").opts(color="red")
-        * df.hvplot.area(x="frame", y="low_red", y2="high_red").opts(
-            alpha=0.3, color="red"
+        df.hvplot(x="frame", y="mean_red", responsive=True, min_height=200).opts(
+            color="red"
         )
-        * df.hvplot(x="frame", y="mean_green").opts(color="green")
-        * df.hvplot.area(x="frame", y="low_green", y2="high_green").opts(
-            alpha=0.3, color="green"
+        * df.hvplot.area(
+            x="frame", y="low_red", y2="high_red", responsive=True, min_height=200
+        ).opts(alpha=0.3, color="red")
+        * df.hvplot(x="frame", y="mean_green", responsive=True, min_height=200).opts(
+            color="green"
         )
-    )
+        * df.hvplot.area(
+            x="frame", y="low_green", y2="high_green", responsive=True, min_height=200
+        ).opts(alpha=0.3, color="green")
+        * hv.VLine(frame if frame else 0).opts(
+            hv.opts.VLine(color="grey", line_width=3)
+        )
+    ).opts(responsive=True)
 
 
 def draw_fucci_measurement_merged_track(
@@ -419,24 +428,30 @@ def draw_fucci_measurement_merged_track(
     green_segmentation_map: np.ndarray,
     red_stack: np.ndarray,
     green_stack: np.ndarray,
+    frame: int = None,
 ):
     df_red_segmap = df.query('source_track == "red"').copy()
     df_green_segmap = df.query('source_track == "green"').copy()
 
     df_red_segmap[["mean_red", "std_red"]] = measure_track(
-        df, red_segmentation_map, red_stack
+        df_red_segmap, red_segmentation_map, red_stack
     )
     df_red_segmap[["mean_green", "std_green"]] = measure_track(
-        df, red_segmentation_map, green_stack
+        df_red_segmap, red_segmentation_map, green_stack
     )
     df_green_segmap[["mean_red", "std_red"]] = measure_track(
-        df, green_segmentation_map, red_stack
+        df_green_segmap, green_segmentation_map, red_stack
     )
     df_green_segmap[["mean_green", "std_green"]] = measure_track(
-        df, green_segmentation_map, green_stack
+        df_green_segmap, green_segmentation_map, green_stack
     )
 
-    df = pd.concat([df_red_segmap, df_green_segmap])
+    try:
+        df = pd.concat([df_red_segmap, df_green_segmap])
+    except ValueError:
+        df = pd.DataFrame(
+            columns=["mean_red", "std_red", "mean_green", "std_green", *df.columns]
+        )
     df["std_red"] = df.std_red / df.mean_red
     df["std_green"] = df.std_green / df.mean_green
 
@@ -452,15 +467,22 @@ def draw_fucci_measurement_merged_track(
     df["high_green"] = df["mean_green"] + df["std_green"]
 
     return (
-        df.hvplot(x="frame", y="mean_red").opts(color="red")
-        * df.hvplot.area(x="frame", y="low_red", y2="high_red").opts(
-            alpha=0.3, color="red"
+        df.hvplot(x="frame", y="mean_red", responsive=True, min_height=200).opts(
+            color="red"
         )
-        * df.hvplot(x="frame", y="mean_green").opts(color="green")
-        * df.hvplot.area(x="frame", y="low_green", y2="high_green").opts(
-            alpha=0.3, color="green"
+        * df.hvplot.area(
+            x="frame", y="low_red", y2="high_red", responsive=True, min_height=200
+        ).opts(alpha=0.3, color="red")
+        * df.hvplot(x="frame", y="mean_green", responsive=True, min_height=200).opts(
+            color="green"
         )
-    )
+        * df.hvplot.area(
+            x="frame", y="low_green", y2="high_green", responsive=True, min_height=200
+        ).opts(alpha=0.3, color="green")
+        * hv.VLine(frame if frame else 0).opts(
+            hv.opts.VLine(color="grey", line_width=3)
+        )
+    ).opts(responsive=True)
 
 
 class CartesianSimilarity:
@@ -555,7 +577,12 @@ class CartesianSimilarity:
                 row["POSITION_Y"] = np.mean([r.POSITION_X, g.POSITION_X])
                 row["POSITION_Y"] = np.mean([r.POSITION_Y, g.POSITION_Y])
             rows.append(row)
-        yellow_frames = pd.concat(rows)
+        yellow_frames = (
+            pd.concat(rows)
+            if rows
+            else pd.DataFrame(columns=["source_track", *red_track_df.columns])
+        )
+
         # yellow_frames = (
         #     pd.concat([overlap_red_frames, overlap_green_frames])
         #     .groupby("frame")[["frame", "POSITION_X", "POSITION_Y"]]
@@ -588,7 +615,7 @@ class CartesianSimilarityFromFile(CartesianSimilarity):
         self, tm_red: TrackmateXML, tm_green: TrackmateXML, metric: pd.DataFrame
     ):
         super().__init__(tm_red, tm_green)
-        self.metric_df = metric
+        self.metric_df = metric.sort_values("metric").reset_index(drop=True)
 
     @cache
     def calculate_metric(self, green_track_id, red_track_id):
@@ -602,9 +629,14 @@ class ViewType(Enum):
     merged = auto()
 
 
-def view_merged_track(param, merged_track, merged_track1, frame):
+def view_merged_track(param, red_track, green_track, frame):
     # TODO view red/yellow/green track
-    return hv.Text(0, 0, "merged_track")
+    return view_red_green_track(
+        param,
+        red_track,
+        green_track,
+        frame=frame,
+    ).opts(hv.opts.Polygons(line_color="yellow"))
 
 
 class TrackViewer(param.Parameterized):
@@ -621,6 +653,8 @@ class TrackViewer(param.Parameterized):
         green_stack,
         tm_red: TrackmateXML,
         tm_green: TrackmateXML,
+        red_segmentation_map,
+        green_segmentation_map,
         metric: CartesianSimilarity = None,
         **params,
     ):
@@ -630,6 +664,9 @@ class TrackViewer(param.Parameterized):
         self.green_stack = green_stack
         self.tm_red = tm_red
         self.tm_green = tm_green
+
+        self.red_segmentation_map = red_segmentation_map
+        self.green_segmentation_map = green_segmentation_map
 
         self.metric = metric if metric else CartesianSimilarity(tm_red, tm_green)
         self.df = self.metric.calculate_metric_for_all_tracks()
@@ -653,8 +690,10 @@ class TrackViewer(param.Parameterized):
         )
         self.current_red_track = int(top_red_track)
         self.current_green_track = int(top_green_track)
-        self.frame_wdgt.start = track.frame.min().item()
-        self.frame_wdgt.end = track.frame.max().item()
+        self.frame_wdgt.start, self.frame_wdgt.end = (
+            track.frame.min().item(),
+            track.frame.max().item(),
+        )
         self.frame_wdgt.value = track.query('color == "yellow"').frame.min().item()
 
         # self.images = pn.Row(
@@ -664,6 +703,64 @@ class TrackViewer(param.Parameterized):
         #     )
         # )
         # self.graphs = self.make_graphs()
+
+    @pn.depends(
+        "current_red_track",
+        "current_green_track",
+        "frame",
+        "view_type",
+        # watch=True,
+    )
+    def make_measurement(self):
+        large = hv.Text(0, 0, "empty")
+
+        if ViewType[self.view_type] is ViewType.merged:
+            merged_track = self.metric.merge_tracks(
+                self.current_red_track, self.current_green_track
+            )
+            large = draw_fucci_measurement_merged_track(
+                merged_track,
+                red_segmentation_map=self.red_segmentation_map,
+                green_segmentation_map=self.green_segmentation_map,
+                red_stack=self.red_stack,
+                green_stack=self.green_stack,
+                frame=self.frame,
+            )
+
+        if ViewType[self.view_type] is ViewType.individual:
+            red_track = self.tm_red.trace_track(self.current_red_track)
+            green_track = self.tm_green.trace_track(self.current_green_track)
+            large = (
+                draw_fucci_measurement(
+                    red_track,
+                    segmentation_map=self.red_segmentation_map,
+                    red_stack=self.red_stack,
+                    green_stack=self.green_stack,
+                    frame=self.frame,
+                )
+                + draw_fucci_measurement(
+                    green_track,
+                    segmentation_map=self.green_segmentation_map,
+                    red_stack=self.red_stack,
+                    green_stack=self.green_stack,
+                    frame=self.frame,
+                )
+            ).cols(1)
+
+        # a = red_track.query("frame == @self.frame")
+        # spot_in_frame = a if not a.empty else green_track.query("frame == @self.frame")
+        # # if spot_in_frame.empty:
+        # #     return pn.pane.HoloViews(large)
+        #
+        # cell_x, cell_y = spot_in_frame[["POSITION_X", "POSITION_Y"]].values[0]
+        # zoom_opts = hv.opts.Image(
+        #     xlim=(cell_x - 30, cell_x + 30),
+        #     ylim=(cell_y - 30, cell_y + 30),
+        #     aspect=1,
+        # )
+        # zoom = large.opts(zoom_opts, clone=True)
+        # return pn.Row(pn.pane.HoloViews(large), pn.pane.HoloViews(zoom))
+        return pn.pane.HoloViews(large)
 
     @pn.depends(
         "current_red_track",
@@ -726,8 +823,10 @@ class TrackViewer(param.Parameterized):
             red_track_id=self.df.loc[event.row].red_track.item(),
             green_track_id=self.df.loc[event.row].green_track.item(),
         )
-        self.frame_wdgt.start = track.frame.min().item()
-        self.frame_wdgt.end = track.frame.max().item()
+        self.frame_wdgt.start, self.frame_wdgt.end = (
+            track.frame.min().item(),
+            track.frame.max().item(),
+        )
         self.current_red_track = int(self.df.loc[event.row].red_track.item())
         self.current_green_track = int(self.df.loc[event.row].green_track.item())
         self.frame_wdgt.value = track.query('color == "yellow"').frame.min().item()
@@ -739,9 +838,22 @@ class TrackViewer(param.Parameterized):
         #     )
         # ]
 
+    @pn.depends(
+        "current_red_track",
+        "current_green_track",
+    )
+    def make_top_label(self):
+        return f"red track: {self.current_red_track}, green track: {self.current_green_track}"
+
     def view(self):
         return pn.Row(
             # self.images,
             self.make_images,
-            pn.Column(self.view_type_wdgt, self.frame_wdgt, self.metric_wdgt),
+            pn.Column(
+                self.make_top_label,
+                self.view_type_wdgt,
+                self.frame_wdgt,
+                self.metric_wdgt,
+                self.make_measurement,
+            ),
         )

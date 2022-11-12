@@ -30,5 +30,13 @@ metric_df = pd.read_hdf(base_data_path / "metric.h5", key="metric")
 metric = trackmate_utils.CartesianSimilarityFromFile(tm_red, tm_green, metric_df)
 
 
-viewer = trackmate_utils.TrackViewer(red_stack, green_stack, tm_red, tm_green, metric)
+viewer = trackmate_utils.TrackViewer(
+    red_stack=red_stack,
+    green_stack=green_stack,
+    tm_red=tm_red,
+    tm_green=tm_green,
+    red_segmentation_map=red_segmentation_map,
+    green_segmentation_map=green_segmentation_map,
+    metric=metric,
+)
 viewer.view().show()
