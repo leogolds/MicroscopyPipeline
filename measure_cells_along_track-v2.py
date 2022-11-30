@@ -1,8 +1,5 @@
-from trackmate_utils import TrackmateXML
+from trackmate_utils import TrackmateXML, make_perimeter, make_path
 from pathlib import Path
-from shapely.geometry.polygon import Polygon
-from shapely.geometry.linestring import LineString
-from shapely.affinity import translate
 import numpy as np
 import pandas as pd
 import tifffile
@@ -10,8 +7,6 @@ import holoviews as hv
 import panel as pn
 import h5py
 from sklearn.preprocessing import MinMaxScaler
-import hvplot.pandas
-
 
 hv.extension("bokeh")
 pn.extension()
@@ -48,27 +43,6 @@ pn.extension()
 #     return np.array([calculate_intersection(g, r).area for g, r in pairs])
 
 
-def construct_perimeters(df):
-    return df.apply(make_polygon, axis="columns")
-
-
-def make_polygon(df):
-    polygon = Polygon(df.ROI)
-    x, y = df.POSITION_X, df.POSITION_Y
-    polygon = translate(polygon, x + 0.5, y + 0.5)
-
-    return polygon
-
-
-def make_path(df):
-    line = LineString(
-        df[["POSITION_X", "POSITION_Y"]]
-        .astype(float)
-        .itertuples(index=False, name=None)
-    )
-    return line
-
-
 def visualize_spot(images, track_id, frame):
     opts = {
         "aspect": images[0].shape[2] / images[0].shape[1],
@@ -85,7 +59,7 @@ def visualize_spot(images, track_id, frame):
     )
     spot = red_spots_df.query("frame == @frame and ID in @spot_ids")
 
-    perimeters = [construct_perimeters(spot)]
+    perimeters = [make_perimeter(spot)]
     #     print(perimeters[0].iloc[0])
 
     # construct holoviews objects
@@ -193,20 +167,11 @@ red_stack = tifffile.TiffFile(base_path / "red.tif").asarray()
 green_stack = tifffile.TiffFile(base_path / "green.tif").asarray()
 
 
-# In[3]:
-
-
 segmented_red = h5py.File(base_path / "red_segmented.h5").get("data")
 segmented_green = h5py.File(base_path / "green_segmented.h5").get("data")
 
 
-# In[4]:
-
-
 scaler = MinMaxScaler()
-
-
-# In[5]:
 
 
 frame_wdgt = pn.widgets.IntSlider(start=0, end=60)
