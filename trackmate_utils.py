@@ -610,11 +610,13 @@ class CartesianSimilarity:
         green_frames["color"] = "green"
         green_frames["source_track"] = "green"
 
-        return (
+        df = (
             pd.concat([red_frames, green_frames, yellow_frames])
             .reset_index(drop=True)
             .sort_values("frame")
         )
+        df["merged_track_id"] = f"r{int(red_track_id)}_g{int(green_track_id)}"
+        return df
 
 
 class CartesianSimilarityFromFile(CartesianSimilarity):
