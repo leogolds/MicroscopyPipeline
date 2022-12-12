@@ -494,6 +494,7 @@ def measure_merged(
 
 class CartesianSimilarity:
     def __init__(self, tm_red: TrackmateXML, tm_green: TrackmateXML):
+        self.metric_df = pd.DataFrame()
         self.tm_red = tm_red
         self.tm_green = tm_green
 
@@ -545,7 +546,8 @@ class CartesianSimilarity:
         df = pd.DataFrame(columns=["red_track", "green_track"], data=combinations)
         df["metric"] = metrics
 
-        return df.sort_values("metric").reset_index(drop=True)
+        self.metric_df = df.sort_values("metric").reset_index(drop=True)
+        return self.metric_df
 
     @cache
     def merge_tracks(self, red_track_id, green_track_id):
@@ -616,6 +618,54 @@ class CartesianSimilarity:
             .sort_values("frame")
         )
         df["merged_track_id"] = f"r{int(red_track_id)}_g{int(green_track_id)}"
+        return df
+
+    def get_merged_tracks(self, max_metric_value: float = 2.0):
+        if self.metric_df.empty:
+            self.calculate_metric_for_all_tracks()
+
+        track_df_list = (
+            self.metric_df.query("metric < @max_metric_value")
+            .apply(
+                lambda x: self.merge_tracks(x.red_track, x.green_track), axis="columns"
+            )
+            .to_list()
+        )
+        return pd.concat(track_df_list).reset_index(drop=True)
+
+    def calculate_statistic_for_bins(self, bin_labels=("left", "middle", "right")):
+        all_merged_tracks = self.get_merged_tracks()
+        all_merged_tracks["bin"] = pd.cut(
+            all_merged_tracks.POSITION_X, len(bin_labels), labels=bin_labels
+        )
+        # binned_merged_tracks = all_merged_tracks.insert(
+        #     bin=all_merged_tracks.POSITION_X.cut(len(bins))
+        # )
+        red_spots_in_merged_tracks = all_merged_tracks.query('source_track == "red"').ID
+        green_spots_in_merged_tracks = all_merged_tracks.query(
+            'source_track == "green"'
+        ).ID
+
+        self.tm_red.spots["bin"] = pd.cut(
+            self.tm_red.spots.POSITION_X, len(bin_labels), labels=bin_labels
+        )
+        self.tm_green.spots["bin"] = pd.cut(
+            self.tm_green.spots.POSITION_X, len(bin_labels), labels=bin_labels
+        )
+
+        distinctly_red_spots = self.tm_red.spots.drop(red_spots_in_merged_tracks)
+        distinctly_green_spots = self.tm_green.spots.drop(green_spots_in_merged_tracks)
+
+        red_count = distinctly_red_spots.groupby(["frame", "bin"]).size()
+        green_count = distinctly_green_spots.groupby(["frame", "bin"]).size()
+        merged_tracks_count = (
+            all_merged_tracks.groupby(["frame", "color", "bin"]).size().unstack("color")
+        )
+
+        df = merged_tracks_count.copy().fillna(0)
+        df["green"] = df["green"] + green_count
+        df["red"] = df["red"] + red_count
+
         return df
 
 
