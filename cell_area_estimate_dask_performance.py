@@ -64,10 +64,10 @@ def compute_voronoi_stats(df):
         Polygon(vert).length * pixel_size_in_microns for vert in df.vertices
     ]
 
-    horizontal_bins = range(0, 4096, 40)
-    df["bins"] = pd.cut(
-        df.center_x, bins=horizontal_bins, labels=range(len(horizontal_bins) - 1)
-    )
+    # horizontal_bins = range(0, 4096, 40)
+    # df["bins"] = pd.cut(
+    #     df.center_x, bins=horizontal_bins, labels=range(len(horizontal_bins) - 1)
+    # )
 
     # global_stats_list.append(df)
     return df
