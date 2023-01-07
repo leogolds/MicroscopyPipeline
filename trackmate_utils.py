@@ -257,6 +257,7 @@ class TrackmateXML:
         #     .astype(float)
         #     .itertuples(index=False, name=None)
         # )
+        whole_track["track_id"] = str(track_id)
         return whole_track  # , track_splits
         # return line, whole_track, track_splits
 
@@ -662,34 +663,10 @@ class CartesianSimilarity:
         return all_spots
 
     def get_all_spots(self):
-        all_merged_tracks = self.get_merged_tracks()
-        # binned_merged_tracks = all_merged_tracks.insert(
-        #     bin=all_merged_tracks.POSITION_X.cut(len(bins))
-        # )
-
-        # extract track id from merge_id
-        accounted_red_green_track_ids = all_merged_tracks.merged_track_id.str.extract(
-            r"r(?P<red_track_id>\d*)_g(?P<green_track_id>\d*)"
-        )
-        accounted_red_green_track_ids["red_track_id"] = pd.to_numeric(
-            accounted_red_green_track_ids.red_track_id
-        )
-        accounted_red_green_track_ids["green_track_id"] = pd.to_numeric(
-            accounted_red_green_track_ids.green_track_id
-        )
-        accounted_red_green_track_ids = accounted_red_green_track_ids.drop_duplicates()
-
-        # extract spots accounted for red/green spot ids
-        red_spots_in_merged_tracks = pd.concat(
-            accounted_red_green_track_ids.red_track_id.apply(
-                self.tm_red.trace_track
-            ).values
-        ).ID
-        green_spots_in_merged_tracks = pd.concat(
-            accounted_red_green_track_ids.green_track_id.apply(
-                self.tm_green.trace_track
-            ).values
-        ).ID
+        (
+            green_spots_in_merged_tracks,
+            red_spots_in_merged_tracks,
+        ) = self.get_merged_red_green_spot_ids()
 
         distinctly_red_spots = self.tm_red.spots.drop(
             red_spots_in_merged_tracks
@@ -706,10 +683,44 @@ class CartesianSimilarity:
         distinctly_green_spots["merged_track_id"] = "unmerged"
 
         df = pd.concat(
-            [all_merged_tracks, distinctly_red_spots, distinctly_green_spots]
+            [self.get_merged_tracks(), distinctly_red_spots, distinctly_green_spots]
         ).reset_index(drop=True)
 
         return df
+
+    def get_merged_red_green_spot_ids(self):
+        accounted_red_green_track_ids = self.get_track_ids_accounted_by_merge()
+
+        # extract spots accounted for red/green spot ids
+        red_spots_in_merged_tracks = pd.concat(
+            accounted_red_green_track_ids.red_track_id.apply(
+                self.tm_red.trace_track
+            ).values
+        ).ID
+        green_spots_in_merged_tracks = pd.concat(
+            accounted_red_green_track_ids.green_track_id.apply(
+                self.tm_green.trace_track
+            ).values
+        ).ID
+
+        return green_spots_in_merged_tracks, red_spots_in_merged_tracks
+
+    def get_track_ids_accounted_by_merge(self):
+        all_merged_tracks = self.get_merged_tracks()
+
+        # extract track id from merge_id
+        accounted_red_green_track_ids = all_merged_tracks.merged_track_id.str.extract(
+            r"r(?P<red_track_id>\d*)_g(?P<green_track_id>\d*)"
+        )
+
+        accounted_red_green_track_ids["red_track_id"] = pd.to_numeric(
+            accounted_red_green_track_ids.red_track_id
+        )
+        accounted_red_green_track_ids["green_track_id"] = pd.to_numeric(
+            accounted_red_green_track_ids.green_track_id
+        )
+
+        return accounted_red_green_track_ids.drop_duplicates()
 
 
 class CartesianSimilarityFromFile(CartesianSimilarity):
