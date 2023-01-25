@@ -257,7 +257,7 @@ class TrackmateXML:
         #     .astype(float)
         #     .itertuples(index=False, name=None)
         # )
-        whole_track["track_id"] = str(track_id)
+        whole_track["track_id"] = str(int(track_id))
         return whole_track  # , track_splits
         # return line, whole_track, track_splits
 
@@ -682,8 +682,17 @@ class CartesianSimilarity:
         distinctly_red_spots["merged_track_id"] = "unmerged"
         distinctly_green_spots["merged_track_id"] = "unmerged"
 
+        # distinctly_red_spots["track_uid"] = distinctly_red_spots.track_id.apply(
+        #     lambda x: f"r{x:d}"
+        # )
+        # distinctly_green_spots["track_uid"] = distinctly_green_spots.track_id.apply(
+        #     lambda x: f"g{x:d}"
+        # )
+        merged = self.get_merged_tracks()
+        # merged["track_uid"] = merged.merged_track_id
+        #
         df = pd.concat(
-            [self.get_merged_tracks(), distinctly_red_spots, distinctly_green_spots]
+            [merged, distinctly_red_spots, distinctly_green_spots]
         ).reset_index(drop=True)
 
         return df
@@ -721,6 +730,22 @@ class CartesianSimilarity:
         )
 
         return accounted_red_green_track_ids.drop_duplicates()
+
+    def get_unmerged_red_green_tracks(self):
+        merged_tracks = self.get_track_ids_accounted_by_merge()
+
+        red_unmerged_tracks = pd.concat(
+            merged_tracks.red_track_id.apply(self.tm_red.trace_track).values,
+            ignore_index=True,
+        )
+        red_unmerged_tracks["source_track"] = "red"
+        green_unmerged_tracks = pd.concat(
+            merged_tracks.green_track_id.apply(self.tm_green.trace_track).values,
+            ignore_index=True,
+        )
+        green_unmerged_tracks["source_track"] = "green"
+
+        return red_unmerged_tracks, green_unmerged_tracks
 
 
 class CartesianSimilarityFromFile(CartesianSimilarity):
