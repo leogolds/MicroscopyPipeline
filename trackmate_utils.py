@@ -41,6 +41,8 @@ from utils import view_stacks
 hv.extension("bokeh")
 import panel as pn
 
+tqdm.tqdm.pandas()
+
 
 def pairwise_iterator(iterable):
     "s -> (s0, s1), (s2, s3), (s4, s5), ..."
@@ -625,9 +627,10 @@ class CartesianSimilarity:
         if self.metric_df.empty:
             self.calculate_metric_for_all_tracks()
 
+        print("Merging tracks")
         track_df_list = (
             self.metric_df.query("metric < @max_metric_value")
-            .apply(
+            .progress_apply(
                 lambda x: self.merge_tracks(x.red_track, x.green_track), axis="columns"
             )
             .to_list()
@@ -995,3 +998,20 @@ class TrackViewer(param.Parameterized):
                 self.make_measurement,
             ),
         )
+
+
+def track_flow(df):
+    """Calculate the positional derivative for the track d(xy)/dt and represent in polar coordinates"""
+    df = df.sort_values("frame")
+    result_df = pd.DataFrame()
+    result_df["d_frame"] = df.frame.diff()
+    result_df["d_x"] = df.POSITION_X.diff()
+    result_df["d_y"] = df.POSITION_Y.diff()
+    # result_df.dropna()
+    result_df["magnitude"] = (result_df.d_x**2 + result_df.d_y**2) ** 0.5
+    result_df["angle"] = np.arctan2(
+        (result_df.d_y / result_df.magnitude).values.astype(np.float32),
+        (result_df.d_x / result_df.magnitude).values.astype(np.float32),
+    )
+
+    return result_df
