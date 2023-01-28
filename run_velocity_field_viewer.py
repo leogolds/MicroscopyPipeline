@@ -137,8 +137,13 @@ def visualize_flow_field(flow_field_df, frame=30, min_magnitude=0):
     ).opts(color="red")
     histograms = (
         (
-            frame_df.magnitude.hvplot.hist(title="Magnitude", xlim=(0, 25)) * v_line
-            + df.angle.hvplot.hist(title="Angle", xlim=(-np.pi, np.pi))
+            frame_df.magnitude.hvplot.hist(
+                title="Velocity", xlabel="velocity (um/frame)", xlim=(0, 20)
+            )
+            * v_line
+            + df.angle.hvplot.hist(
+                title="Direction", xlabel="angle (rad)", xlim=(-np.pi, np.pi)
+            )
         )
         .cols(1)
         .opts(shared_axes=False)
@@ -150,9 +155,14 @@ def visualize_flow_field(flow_field_df, frame=30, min_magnitude=0):
     ).opts(
         frame_width=red_stack.shape[2], frame_height=red_stack.shape[1], cmap="gray"
     ) * df.hvplot.vectorfield(
-        x="x_bin", y="y_bin", mag="magnitude", angle="angle"
+        x="x_bin",
+        y="y_bin",
+        mag="magnitude_um",
+        angle="angle"
+        # x="x_bin", y="y_bin", mag="magnitude", angle="angle"
     ).opts(
-        color="magnitude",
+        # color="magnitude",
+        color="magnitude_um",
         xlim=(0, red_stack.shape[2]),
         ylim=(0, red_stack.shape[1]),
         frame_width=red_stack.shape[2],
@@ -160,7 +170,7 @@ def visualize_flow_field(flow_field_df, frame=30, min_magnitude=0):
         colorbar=True,
         cmap="bgy",
     ).redim.range(
-        magnitude=(0, 25)
+        magnitude_um=(0, 20)
     )
 
     return pn.Row(
@@ -175,6 +185,7 @@ def update():
 
 
 flow_field_df = calculate_flow_field()
+flow_field_df["magnitude_um"] = flow_field_df.magnitude * 0.67
 t = (
     flow_field_df.groupby(["frame", "x_bin", "y_bin"])
     .rolling(3)
