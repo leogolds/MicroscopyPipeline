@@ -41,6 +41,8 @@ from utils import view_stacks
 hv.extension("bokeh")
 import panel as pn
 
+tqdm.tqdm.pandas()
+
 
 def pairwise_iterator(iterable):
     "s -> (s0, s1), (s2, s3), (s4, s5), ..."
@@ -257,6 +259,7 @@ class TrackmateXML:
         #     .astype(float)
         #     .itertuples(index=False, name=None)
         # )
+        whole_track["track_id"] = str(int(track_id))
         return whole_track  # , track_splits
         # return line, whole_track, track_splits
 
@@ -494,6 +497,7 @@ def measure_merged(
 
 class CartesianSimilarity:
     def __init__(self, tm_red: TrackmateXML, tm_green: TrackmateXML):
+        self.metric_df = pd.DataFrame()
         self.tm_red = tm_red
         self.tm_green = tm_green
 
@@ -545,7 +549,8 @@ class CartesianSimilarity:
         df = pd.DataFrame(columns=["red_track", "green_track"], data=combinations)
         df["metric"] = metrics
 
-        return df.sort_values("metric").reset_index(drop=True)
+        self.metric_df = df.sort_values("metric").reset_index(drop=True)
+        return self.metric_df
 
     @cache
     def merge_tracks(self, red_track_id, green_track_id):
@@ -610,11 +615,140 @@ class CartesianSimilarity:
         green_frames["color"] = "green"
         green_frames["source_track"] = "green"
 
-        return (
+        df = (
             pd.concat([red_frames, green_frames, yellow_frames])
             .reset_index(drop=True)
             .sort_values("frame")
         )
+        df["merged_track_id"] = f"r{int(red_track_id)}_g{int(green_track_id)}"
+        return df
+
+    def get_merged_tracks(self, max_metric_value: float = 2.0):
+        if self.metric_df.empty:
+            self.calculate_metric_for_all_tracks()
+
+        print("Merging tracks")
+        track_df_list = (
+            self.metric_df.query("metric < @max_metric_value")
+            .progress_apply(
+                lambda x: self.merge_tracks(x.red_track, x.green_track), axis="columns"
+            )
+            .to_list()
+        )
+        return pd.concat(track_df_list).reset_index(drop=True)
+
+    def count_cells_in_bins(self, bin_labels=("left", "middle", "right")):
+        all_cells_df = self.partition_cells_into_bins(bin_labels)
+
+        # red_count = distinctly_red_spots.groupby(["frame", "bin"]).size()
+        # green_count = distinctly_green_spots.groupby(["frame", "bin"]).size()
+        merged_tracks_count = (
+            all_cells_df.groupby(["frame", "color", "bin"]).size().unstack("color")
+        )
+
+        df = merged_tracks_count.copy().fillna(0).reset_index()
+        # df["green"] = df["green"] + green_count
+        # df["red"] = df["red"] + red_count
+
+        return df
+
+    def partition_cells_into_bins(self, bin_labels=("left", "middle", "right")):
+        all_spots = self.get_all_spots()
+
+        # red_spots_in_merged_tracks = all_merged_tracks.query('source_track == "red"').ID
+        # green_spots_in_merged_tracks = all_merged_tracks.query(
+        #     'source_track == "green"'
+        # ).ID
+        all_spots["bin"] = pd.cut(
+            all_spots.POSITION_X, len(bin_labels), labels=bin_labels
+        )
+
+        return all_spots
+
+    def get_all_spots(self):
+        (
+            green_spots_in_merged_tracks,
+            red_spots_in_merged_tracks,
+        ) = self.get_merged_red_green_spot_ids()
+
+        distinctly_red_spots = self.tm_red.spots.drop(
+            red_spots_in_merged_tracks
+        ).reset_index()
+        distinctly_green_spots = self.tm_green.spots.drop(
+            green_spots_in_merged_tracks
+        ).reset_index()
+
+        distinctly_red_spots[["color", "source_track"]] = "red"
+        distinctly_red_spots["source_track"] = "red"
+        distinctly_green_spots[["color", "source_track"]] = "green"
+        distinctly_green_spots["source_track"] = "green"
+        distinctly_red_spots["merged_track_id"] = "unmerged"
+        distinctly_green_spots["merged_track_id"] = "unmerged"
+
+        # distinctly_red_spots["track_uid"] = distinctly_red_spots.track_id.apply(
+        #     lambda x: f"r{x:d}"
+        # )
+        # distinctly_green_spots["track_uid"] = distinctly_green_spots.track_id.apply(
+        #     lambda x: f"g{x:d}"
+        # )
+        merged = self.get_merged_tracks()
+        # merged["track_uid"] = merged.merged_track_id
+        #
+        df = pd.concat(
+            [merged, distinctly_red_spots, distinctly_green_spots]
+        ).reset_index(drop=True)
+
+        return df
+
+    def get_merged_red_green_spot_ids(self):
+        accounted_red_green_track_ids = self.get_track_ids_accounted_by_merge()
+
+        # extract spots accounted for red/green spot ids
+        red_spots_in_merged_tracks = pd.concat(
+            accounted_red_green_track_ids.red_track_id.apply(
+                self.tm_red.trace_track
+            ).values
+        ).ID
+        green_spots_in_merged_tracks = pd.concat(
+            accounted_red_green_track_ids.green_track_id.apply(
+                self.tm_green.trace_track
+            ).values
+        ).ID
+
+        return green_spots_in_merged_tracks, red_spots_in_merged_tracks
+
+    def get_track_ids_accounted_by_merge(self):
+        all_merged_tracks = self.get_merged_tracks()
+
+        # extract track id from merge_id
+        accounted_red_green_track_ids = all_merged_tracks.merged_track_id.str.extract(
+            r"r(?P<red_track_id>\d*)_g(?P<green_track_id>\d*)"
+        )
+
+        accounted_red_green_track_ids["red_track_id"] = pd.to_numeric(
+            accounted_red_green_track_ids.red_track_id
+        )
+        accounted_red_green_track_ids["green_track_id"] = pd.to_numeric(
+            accounted_red_green_track_ids.green_track_id
+        )
+
+        return accounted_red_green_track_ids.drop_duplicates()
+
+    def get_unmerged_red_green_tracks(self):
+        merged_tracks = self.get_track_ids_accounted_by_merge()
+
+        red_unmerged_tracks = pd.concat(
+            merged_tracks.red_track_id.apply(self.tm_red.trace_track).values,
+            ignore_index=True,
+        )
+        red_unmerged_tracks["source_track"] = "red"
+        green_unmerged_tracks = pd.concat(
+            merged_tracks.green_track_id.apply(self.tm_green.trace_track).values,
+            ignore_index=True,
+        )
+        green_unmerged_tracks["source_track"] = "green"
+
+        return red_unmerged_tracks, green_unmerged_tracks
 
 
 class CartesianSimilarityFromFile(CartesianSimilarity):
@@ -864,3 +998,20 @@ class TrackViewer(param.Parameterized):
                 self.make_measurement,
             ),
         )
+
+
+def track_flow(df):
+    """Calculate the positional derivative for the track d(xy)/dt and represent in polar coordinates"""
+    df = df.sort_values("frame")
+    result_df = pd.DataFrame()
+    result_df["d_frame"] = df.frame.diff()
+    result_df["d_x"] = df.POSITION_X.diff()
+    result_df["d_y"] = df.POSITION_Y.diff()
+    # result_df.dropna()
+    result_df["magnitude"] = (result_df.d_x**2 + result_df.d_y**2) ** 0.5
+    result_df["angle"] = np.arctan2(
+        (result_df.d_y / result_df.magnitude).values.astype(np.float32),
+        (result_df.d_x / result_df.magnitude).values.astype(np.float32),
+    )
+
+    return result_df
