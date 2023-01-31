@@ -12,6 +12,7 @@ import numpy as np
 import trackmate_utils
 import utils
 import panel as pn
+from skimage.exposure import equalize_adapthist
 
 hv.extension("bokeh")
 
@@ -150,7 +151,7 @@ def visualize_flow_field(flow_field_df, frame=30, min_magnitude=0):
     )
 
     a = hv.Image(
-        np.flipud(red_stack[frame, ...]),
+        equalize_adapthist(np.flipud(red_stack[frame, ...])),
         bounds=(0, 0, red_stack.shape[2], red_stack.shape[1]),
     ).opts(
         frame_width=red_stack.shape[2], frame_height=red_stack.shape[1], cmap="gray"
