@@ -18,11 +18,11 @@ import utils
 
 hv.extension("bokeh")
 
-base_data_path = Path(r"data/fucci_60_frames")
+base_data_path = Path(r"../data/fucci_60_frames")
 red_stack_path = base_data_path / "red.tif"
 green_stack_path = base_data_path / "green.tif"
 
-base_model_path = Path(r"models")
+base_model_path = Path(r"../models")
 red_segmentation_model = base_model_path / "cellpose/nuclei_red_v2"
 green_segmentation_model = base_model_path / "cellpose/nuclei_green_v2"
 
