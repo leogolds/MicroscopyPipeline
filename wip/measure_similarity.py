@@ -110,7 +110,7 @@ def visualize_spot(images, red_line_id, green_line_id):
     return layout
 
 
-base_path = Path(r"data/fucci_60_frames")
+base_path = Path(r"../data/fucci_60_frames")
 tm_red = TrackmateXML(base_path / "red_segmented.tiff.xml")
 tm_green = TrackmateXML(base_path / "green_segmented.tiff.xml")
 
