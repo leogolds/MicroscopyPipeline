@@ -1,0 +1,54 @@
+
+---
+title: "Figure annotations"
+bibliography: bibliography.json
+nocite: |
+  @*
+csl: pnas.csl
+---
+
+### Figures
+
+::: {#fig-phase-categorization layout-ncol=2}
+
+![](figures/placeholder.png){#fig-x}
+
+![](figures/placeholder.png){#fig-y}
+
+TODO: figure explaining how we count
+:::
+
+
+::: {#fig-cell-count layout-nrow=2}
+
+![](figures/lifecycle_cell_count.png){#fig-cell-count-abs}
+
+![](figures/lifecycle_cell_count_normed.png){#fig-cell-count-norm}
+
+**Nuclei count over time, grouped by cellular division phase.** As per the definition in @fig-phase-categorization, the number of nuclei in G1/S/G2M over time is shown in @fig-cell-count-abs. Furthermore, by normalizing each category to the total number of nuclei in the frame we get @fig-cell-count-norm, which shows the fraction of cells in G1/S/G2M over time.
+:::
+
+::: {#fig-cell-area}
+
+![](figures/lifecycle_cell_area_95_ci.png)
+
+**Average cellular area over time, grouped cellular division phase.** Geometric properties of a proliferating 2D cell tissue can be estimated using Voronoi tesselation. By using the center-of-mass of the nuclei in each frame as the seed for a Voronoi transform, we derive an estimate of the cellular boundaries. The area of cells (grouped into G1/S/G2M as per @fig-phase-categorization) was averaged and shown in the red/green/yellow line in the figure. The light area around each line represents the 95% CI around the mean.
+:::
+
+
+::: {#fig-flow-field layout-nrow=2}
+![](figures/flow_field_grid.png){#fig-flow-field-grid}
+
+![](figures/flow_field.png){#fig-flow-field}
+
+![](figures/flow_field_grid_hist.png){#fig-flow-field-grid-hist}
+
+![](figures/flow_field_hist.png){#fig-flow-field-hist}
+
+**Mean flow field for a representative frame.** The instantaneous velocity of each nucleus was calculated based on tracking information derived in the previous steps. The view field was then subdivided into equal squares of ~28k um^2 @fig-flow-field-grid and the average velocity and direction for each grid square is shown in @fig-flow-field where the arrow color represents mean velocity and arrow direction represents mean flow direction in the grid square. Additionally, the number of nuclei in each grid square is represented in @fig-flow-field-grid-hist where the number of nuclei in a grid square is 17 +- STD. Lastly, @fig-flow-field-hist represents the distribution of mean velocity in um/frame (top) and mean direction in radians where 0 means right (bottom) for the view field.
+:::
+
+{{< pagebreak >}}
+
+### References
+

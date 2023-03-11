@@ -148,3 +148,11 @@ dmypy.json
 *.cpproj
 *.doc*
 /*/*/*.tiff.xml
+
+# JavaScript
+*.js
+*.css
+*.woff
+
+# Zotero
+.ztr-directory
