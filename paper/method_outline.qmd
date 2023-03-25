@@ -1,0 +1,53 @@
+---
+title: "Method"
+bibliography: bibliography.json
+csl: pnas.csl
+---
+
+
+# Analysis Task
+where we explain in broad strokes what we want to achieve 
+
+
+
+# Issues specific to FUCCI
+reasoning why the analysis task is non-trivial in the case of FUCCI
+
+# An example segmentation pipeline (conventional)
+where we describe a hypothetical classic/non-deep learning/typical/procedural pipeline
+
+## Preprocessing considerations
+
+## Threshold selection
+
+## Watershed segmentation
+
+## currently available tools and their limitations
+cellprofiler/ilastik
+not working at scale
+parameter optimization
+disadvantages
+
+## Issues when tracking inconsistent features
+where we want to make a point that a good quality segmentation (similar shape, consistently appearing in subsequent frames, no nuclei splits) simplifies tracking. Bottom line: we need a stable segmentation approach for FUCCI.
+
+* capture the majority
+* subsequent frames contain nuclei
+* sensitivity at various SNR
+* 
+
+# Emerging AI/DL/ML/NN based segmentation in bioimaging
+@alomMicroscopicNucleiClassification2022
+Human in the loop ML segmentation
+fully automated system - model is a parameter
+
+# A Similarity metric for FUCCI tracks
+Why we can/need to extend the tracks. Describe the metric and it's appropriateness for FUCCI
+
+# What we provide
+list of features and analysis out of the box
+
+
+{{< pagebreak >}}
+
+### References

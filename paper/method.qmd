@@ -1,0 +1,100 @@
+---
+title: "Method"
+bibliography: bibliography.json
+csl: pnas.csl
+---
+
+
+# Computational Task
+By utilizing a FUCCI dye and long-term live imaging we can probe the dynamics of migrating & dividing cells. Of specific note is our interest in the study of such cellular dynamics in dense/confluent tissue layers. Due to our phenomena of interest arising only as a collective feature, we often image thousands of cells per view field over hundreds of frames, as such we require a reproducible method for deriving insight.
+
+In essence, our task could be described by three distinct steps:
+
+* Segmentation - where a mask is computed that identifies each nucleus in the frame
+* Tracking - where individual nuclei in successive frames are assigned to tracks. Each track represents the positions of a nucleus over time
+* Analysis - where per-cell/collective time-resolved statistics are derived
+
+# Issues specific to FUCCI
+Of specific note is that in FUCCI the brightness of our features fluctuates over time. **NOT SPECIFICALLY**, if we look at a given nucleus at an arbitrary point in time, its brightness will be dependent on both the fluorophore loading and its current divisional stage. Additionally, since the brightness isn't homogenous within a nucleus, the segmentation geometry is closely coupled to threshold selection @fig-threshold-selection.
+
+::: {#fig-threshold-selection}
+
+![](figures/segmentation_issues_due_to_threshold.png)
+
+**Segmentation issues due to threshold selection**
+Confluent FUCCI cells exhibit a wide range of brightnesses. Left/middle/right panels differ by threshold selected demonstrating **SOMETHING OR OTHER. point arrows to interesting sections**. Initial data pretreated with CLAHE, **MAIN POINT** - at any threshold we'll be overestimating the size of the bright nuclei and underestimating (or excluding) the dim nuclei. 
+:::
+
+Additionally, due to our information being spread across two (or potentially more) imaging channels, we must consider how to match tracks derived from different fluorophores.
+
+# Watershed as a fix for nuclei overestimation is error prone
+The watershed algorithm is often used to separate closely packed nuclei that might seem "touching" under a given threshold. Due to the thresholded image only loosely matches the nucleous perimeter, and often depending on background features, watershed could incorrectly split a nucleus @fig-watershed-issues
+
+::: {#fig-watershed-issues}
+
+![](figures/segmentation_issues_due_to_watershed.png)
+
+**Segmentation issues due to watershed selection**
+Example taken from [ImageJ website](https://imagej.net/imaging/watershed) about watershed separation. Showing issues micro spots due to threshold, incorrect segmentation. Left/middle/right mean original data, thresholded, watershed segmentation respectively **SOMETHING OR OTHER. point arrows to interesting sections**.
+:::
+
+# Preprocessing considerations
+* uneven illumination
+* effect of photobleaching on thresholding/segmentation efficiency
+* 
+
+
+# Tracking inconsistent features
+cells coming in/out of focus/over SNR might transiently be detected in the threshold, which messes up tracking. tracks could be extended improperly or terminated too early. There are other solutions to this (like full LAP) but adds another set of parameters to tweak, wheras consistant segmentation (segmentation where sequential frames contain the nucleus and it does appear/disappear) allows us to use a simpler algorithm (simple LAP) with less parameters to fine-tune.
+
+
+
+
+# A similarity metric for matching tracks from different channels
+**SOMETHING EXPLAINING THE METRIC**
+
+**FORMULA**
+
+::: {#fig-features-over-time layout-ncol=2}
+
+![](figures/cartoon_fluoresence_over_time_v2.png){#fig-fluoresence-over-time}
+
+![](figures/cartoon_position_over_time.png){#fig-position-over-time}
+
+**Position and fluorescence intensity of model cell undergoing division**
+If we knew the position of a model nuclei dyed with FUCCI, the *fluorescent intensity* inside the nucleus over time could be represented by the curves in @fig-fluoresence-over-time, where time is on the X axis and brightness is on the Y axis. As can be seen, three distinct phases could be identified: only red is brighter than the noise floor, both red and green are brighter than their respective noise floors and only green is brighter than its noise floor. 
+Similarly, the *position* of the nuclei over time could be represented by the curves in @fig-position-over-time, where time is on the X axis and the position in space is on the Y axis. The colored curves represent the position estimate derived from the red/green channel. Similarly to the view in @fig-fluoresence-over-time, the position of the nucleus could be known based on only red or green channels or based on both. We define the period where positional data is available from both red and green channels as t~overlap~. By defining a similarity metric between two tracks over t~overlap~ we can extend the tracking information available from one channel using another.
+:::
+
+# What we provide
+In this work, we introduce a Python-based framework for analyzing FUCCI experiments. By leveraging CellPose[@stringerCellposeGeneralistAlgorithm2020] for GPU-accelerated segmentation and TrackMate[@tinevezTrackMateOpenExtensible2017,@tinevezTrackMateOpenExtensible2017] for scalable tracking, we provide a layered interface for analyzing FUCCI data. Specifically, we:
+
+* Automate data loading, segmentation using CellPose & tracking using TrackMate in a reproducible manner
+* Provide an interface for TrackMate .xml results into standard Python Pandas objects
+* Provide a FUCCI appropriate metric for matching tracks from red/green channels
+* Extend tracks from one channel with appropriate ones from another channel
+* Measure collective per-frame statistics
+* Measure arbitrary per-track statistics
+* Interactive plots
+
+# CPU vs GPU based segmentation
+* differences
+* available algorithms
+* scalability
+
+# Parllelization and arbitrary performance for calculating metric
+**DO I WANT TO TALK ABOUT DASK AND SPEEDING UP TRACK MATCHING?**
+
+
+::: {#fig-shortcuts}
+
+![](figures/shortcuts.png)
+
+**Shortcuts, not dead ends**
+Tools apply to the problems of different users. Often a user expects to get something working well enough, while a specialist expects detailed control. Between these extremes lie the majority of us, traveling on a trajectory along the casual-to-power-user path, as our needs refine.
+As such, our tools should offer simplified, high-level interfaces that are easy for users to adopt. Not stopping there,  **PLACEHOLDER**   by providing easily portable results. In other words, provide shortcuts, not dead-ends. Adapted from @BackgroundWhyHoloViz.
+:::
+
+{{< pagebreak >}}
+
+### References

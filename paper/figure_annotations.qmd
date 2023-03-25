@@ -7,6 +7,21 @@ nocite: |
 csl: pnas.csl
 ---
 
+### Figures - Introduction
+::: {#fig-cartoon-confluent-dividng-cells layout-ncol=2}
+![](figures/cartoon_dense_cells.png){#fig-cartoon-confluent}
+
+![](figures/cartoon_dividing_cells.png){#fig-cartoon-dividing}
+
+**Cartoon confluent/dividing cells** 
+:::
+
+::: {#fig-cartoon-fucci}
+![](figures/cartoon_fucci.png)
+
+**Cartoon FUCCI** 
+:::
+
 ### Figures
 
 ::: {#fig-phase-categorization layout-ncol=2}
