@@ -1,0 +1,209 @@
+---
+title: "Method"
+bibliography: bibliography.json
+csl: pnas.csl
+---
+
+
+# Analysis Task
+where we explain in broad strokes what we want to achieve 
+
+The past several decades saw the emergence of a variety of bioimaging techniques. Some techniques facilitate probing cellular biology and increasingly high resolution, such as two/multi-photon laser scanning (Pawley, 2006), STORM (Rust et al., 2006), PALM (Betzig et al., 2006), STED (Hell, 2003) while others allow large-scale imaging at the tissue or organism level (lightsheet?). Similarly, the availability of increasingly flexible molecular markers facilitates the novel study of the spatiotemporal properties of biological systems. 
+With the advent of flexible markers and improvements to live-imaging techniques a single imaging experiment might include multiple data modalities and signals, such as:
+
+1. 2D/3D spatial information
+2. Multi-channel imaging corresponding to various molecular reporters
+3. Colocalized signals
+4. Hidden features such as inhibitors or surface topology
+
+The availability of complicated/complex biological and biomedical images poses a challenge for both seasoned bioimage analysts and lay scientists. @pengBioimageInformaticsNew2008
+
+A variety of modern bioimage analysis frameworks exist but often require an in-depth familiarity with both the tool and a range of image analysis techniques and algorithms. Furthermore, due to many bioimaging solutions coming bundled with proprietary software for analyzing specific experiments, reproducibility is limited to those labs that can afford a given package. These limitations raise the bar for adopting modern experimental techniques and limit the insights that could be gleaned from available data.
+
+This paper presents an integrated package of open-source tools for the analysis of complex spatiotemporal cellular dynamics in a FUCCI experiment. The goal of this work is to demonstrate the use of state-of-the-art techniques while simplifying operation and automation to facilitate large-scale, reproducible analysis. ** Something about accessible to the lay scientist while facilitating custom workflows, layered design **
+
+
+# Issues specific to confluent FUCCI
+reasoning why the analysis task is non-trivial in the case of FUCCI
+
+~~~
+rewrite
+2. Nuclei are often clustered with potentially overlapping instances. Separating the clustered nuclei frequently necessitates additional processing. 
+3. Blurry boundary for out-of-focus images increases the difficulty of identifying specific nuclei. 
+4. the appearance of the nucleus and the noticeable variation in its shape
+Other sources of induced variability such as, slide preparation (dyes concentration, cellular damage, etc.) and image acquisition (digital noise existence, explicit features of the imaging setup, etc.), classical methods are unfitting and often cannot be applied to all types of relevant confluent datasets (Hayakawa et al. 2021).~~~
+@alomMicroscopicNucleiClassification2022
+
+Of additional note is that in FUCCI the brightness of our features fluctuates over time. As such, if we look at a given nucleus at an arbitrary point in time, its brightness will be dependent on both the sample preparation (fluorophore loading) and its current divisional stage. ... something about photobleaching? .... making threshold selection less straightforward. Furthermore, due to fluorophore inhomogeneity within a nucleus, the segmentation geometry is closely coupled to threshold selection (see @fig-threshold-selection for details).
+* effect of photobleaching on thresholding/segmentation efficiency - does a cell arresting in G1 continue to produce red fluorophore? I expect a certain biological asymptote, after which we should see a linear decrease in brightness due to photobleaching *
+
+
+Additionally, due to our information being spread across two (or potentially more) imaging channels, we must consider how to match tracks derived from different fluorophores. * need to talk more about this, find references for people describing matching position vectors over time * 
+
+~~~
+Discuss data scale, it directly impacts approach selection due to scalability
+~~~
+
+An effective image-processing approach must be able to overcome the previously mentioned challenges while maintaining the quality and accuracy of the underlying images.
+
+# An example segmentation pipeline (conventional)
+where we describe a hypothetical classic/non-deep learning/typical/procedural pipeline
+
+Cellular segmentation and tracking are essential techniques in bioimage analysis. These techniques enable researchers to study a range of biological processes, including cell behavior, interactions, and dynamics. Consequently, both techniques are commonly used by bioimage analysts to study cells, tissues, and organisms. 
+
+While the general task of identifying relevant/foreground objects in an image could be effectively achieved by a human analyst, the large scale of data generated by modern bioimaging equipment precludes a manual approach. *sentence fragment to link to the variety of possible images* Consequently, many algorithms have been proposed, each with varying performance for a specific analysis task. As such, the bioimage specialist often has the daunting task of selecting multiple algorithms, while optimizing the parameters of each, to reach an acceptable level of performance.
+
+As an instructional tool, we'd like to outline a potential (non-exhaustive) example for applying a series of such classic/conventional/non-ML image transformations on near-confluent, FUCCI-stained, dividing cells. Our goal here is to avoid specific direction/recommendation/... but to demonstrate some limitations of layered image transformations in the case of confluent FUCCI.
+
+As such, we will briefly cover:
+
+* Segmentation
+** Thresholding
+** Edge detection
+** Watershed
+** Machine-learning
+* Tracking
+** Manual
+** Single Particle Tracking
+
+Whereas for details regarding handling: 
+* uneven illumination
+* smoothing/sharpening filters
+* bit depth/format conversions
+Would be better covered by *reference to reviews of preprocessing steps*.
+
+
+## Segmentation
+Segmentation is the process of individually identifying each cell or cellular structure in an image. By segmenting an image, we facilitate   This is a crucial step for quantitative analysis, as it allows researchers to measure various cellular properties such as size, shape, intensity, and texture. There are several approaches to cellular segmentation, including:
+
+### Background suppression
+
+Thresholding
+This method involves selecting an intensity value that separates the foreground (cells) from the background. Pixels with intensities above the threshold are considered part of a potential cell, while those below are considered background.
+
+::: {#fig-threshold-selection}
+
+![](figures/segmentation_issues_due_to_threshold.png)
+
+**Segmentation issues due to threshold selection**
+Confluent FUCCI cells exhibit a wide range of brightnesses. Left/middle/right panels differ by threshold selected demonstrating **SOMETHING OR OTHER. point arrows to interesting sections**. Initial data pretreated with CLAHE, **MAIN POINT** - at any threshold we'll be overestimating the size of the bright nuclei and underestimating (or excluding) the dim nuclei. 
+:::
+
+### Edge/blob detection
+Once the background has been suppressed, we are left with the likely pertinent features. These features are typically non-homogenous and gradually drop off to the value of the background. As such, algorithms that detect the change from background level to some local maxima, can be used to define edges of objects. A selection of edge and blob detection algorithms applied to a confluent FUCCI layer can be seen in @fig-edge-blob-detection.
+
+::: {#fig-edge-blob-detection}
+
+![](figures/placeholder.png)
+
+**selection of edge and blob detectors applied to FUCCI**
+original image -> 2 rows of Canny, Sobel, another edge detector and LOG/DOG/DoH blob detectors. -> cellpoes segmentation
+:::
+
+As can be seen above, while the different detectors do well on some parts of the image, much detail is lost in others. While other approaches exist, the complexity of selecting satisfactory methods and parameters limits the applicability of these approaches to confluent FUCCI. 
+
+### Watershed segmentation
+Once a reasonable rough segmentation has been achieved using blob or edge detectors, it is often the case that densely packed features get merged. The watershed algorithm provides a way to separate proximate features by treating their brightness as if it represented height. By progressively increasing the "height" of an imaginary watershed, we can find where nearby "catchment basins" touch. These points would be the "dam" separating two individual objects. 
+
+::: {#fig-watershed-1d}
+
+![](figures/watershed_flooding_graph.png)
+
+**A 1D height map demonstrating the watershed algorithm**
+The watershed as it would look at different watershed heights. Whenever the watershed covers a new local minima, it creates a new basin (color). Whenever two colors meet, the meeting point is defined as the edge between features.
+:::
+
+While a flexible approach, and a variety of modifications have been proposed to improve its performance @salembierAntiextensiveConnectedOperators1998 @liuImprovedWatershedAlgorithm2010 @linHybrid3DWatershed2003, the algorithm often suffers from over-segmentation @malpicaApplyingWatershedAlgorithms1997 and is sensitive to noise @kanadeCellImageAnalysis2011.
+
+The watershed algorithm is often used to separate closely packed nuclei that might seem "touching" under a given threshold. Due to the thresholded image only loosely matching the nucleus perimeter, and often depending on background features, watershed could incorrectly split a nucleus @fig-watershed-issues
+
+::: {#fig-watershed-issues}
+
+![](figures/segmentation_issues_due_to_watershed.png)
+
+**Segmentation issues due to watershed selection**
+Example is taken from [ImageJ website](https://imagej.net/imaging/watershed) about watershed separation. Showing issues micro spots due to threshold, incorrect segmentation. Left/middle/right mean original data, thresholded, watershed segmentation respectively **SOMETHING OR OTHER. point arrows to interesting sections**.
+:::
+
+### Machine learning-based methods
+These approaches use supervised or unsupervised learning algorithms, such as random forests, support vector machines, or convolutional neural networks, to classify pixels as belonging to cells or backgrounds.
+
+
+## Cellular tracking
+Cellular tracking involves monitoring the movement, division, and interaction of individual cells over time in time-lapse microscopy images. This process is crucial for understanding cellular dynamics, migration patterns, and the overall behavior of cell populations. Common tracking methods include:
+### Manual tracking
+Researchers can manually track cells using software tools that allow them to click on individual cells in each frame, recording their positions and assigning unique identifiers.
+
+### Single-particle tracking
+This technique involves identifying the centroids of cells in each frame and linking them across frames
+
+### Issues when tracking inconsistent features
+where we want to make a point that a good quality segmentation (similar shape, consistently appearing in subsequent frames, no nuclei splits) simplifies tracking. Bottom line: we need a stable segmentation approach for FUCCI.
+
+* capture the majority
+* subsequent frames contain nuclei
+* sensitivity at various SNR
+* 
+
+cells coming in/out of focus/over SNR might transiently be detected in the threshold, which messes up tracking. tracks could be extended improperly or terminated too early. There are other solutions to this (like full LAP) but adds another set of parameters to tweak, whereas consistent segmentation (segmentation where sequential frames contain the nucleus and it does appear/disappear) allows us to use a simpler algorithm (simple LAP) with less parameters to fine-tune.
+
+
+## currently available tools 
+cellprofiler/ilastik
+not working at scale
+parameter optimization
+disadvantages
+
+
+
+# Emerging AI/DL/ML/NN based segmentation in bioimaging
+@alomMicroscopicNucleiClassification2022
+@xunScellsegStyleawareCell2022
+Human in the loop ML segmentation
+fully automated system - model is a parameter
+
+::: {#fig-unet-architecture layout-ncol=2}
+
+![](figures/unet_architecture.png){#fig-unet}
+
+![](figures/sharp_unet_architecture.png){#fig-sharp-unet}
+
+**Architectural overview of U-Net and sharp U-Net**
+describe the architecture and its differences/relevance
+:::
+
+# A Similarity metric for FUCCI tracks
+Why we can/need to extend the tracks? Describe the metric and its appropriateness for FUCCI
+
+**SOMETHING EXPLAINING THE METRIC**
+
+**FORMULA**
+
+::: {#fig-features-over-time layout-ncol=2}
+
+![](figures/cartoon_fluoresence_over_time_v2.png){#fig-fluoresence-over-time}
+
+![](figures/cartoon_position_over_time.png){#fig-position-over-time}
+
+**Position and fluorescence intensity of model cell undergoing division**
+If we knew the position of a model nuclei dyed with FUCCI, the *fluorescent intensity* inside the nucleus over time could be represented by the curves in @fig-fluoresence-over-time, where time is on the X axis and brightness is on the Y axis. As can be seen, three distinct phases could be identified: only red is brighter than the noise floor, both red and green are brighter than their respective noise floors and only green is brighter than its noise floor. 
+Similarly, the *position* of the nuclei over time could be represented by the curves in @fig-position-over-time, where time is on the X axis and the position in space is on the Y axis. The colored curves represent the position estimate derived from the red/green channel. Similarly to the view in @fig-fluoresence-over-time, the position of the nucleus could be known based on only red or green channels or based on both. We define the period where positional data is available from both red and green channels as t~overlap~. By defining a similarity metric between two tracks over t~overlap~ we can extend the tracking information available from one channel using another.
+:::
+
+# What we provide
+list of features and analysis out of the box
+
+Accurate cell instance segmentation is still a challenging task for many laboratories. Although generic models have been developed, these typically require large annotated datasets, which is time- and labor-consuming in data collection, particularly when a large number of segmented objects are to be covered. In this work, we present a software package to facilitate automatic analysis of confluent FUCCI experiments with minimal user involvement. 
+
+* Set of state-of-the-art FUCCI-appropriate image processing tools 
+* Performant segmentation (via CellPose) and tracking (via TrackMate)
+* Person in the loop analysis framework with sane defaults
+* Out-of-the-box figures for analyzing confluent FUCCI experiments
+* Friendly, modern GUI for straightforward operation
+* Friendly, Python-based API for creating custom pipelines
+
+
+
+{{< pagebreak >}}
+
+### References
